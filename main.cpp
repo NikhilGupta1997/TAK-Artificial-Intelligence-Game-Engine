@@ -32,6 +32,9 @@ double stand_threat = 40;
 double mapping[3];
 double diff[8];
 
+// Define some global arrays
+
+
 struct Compare_min
 {
     bool operator()(pair<double,string> p1,pair<double,string> p2)
@@ -107,11 +110,10 @@ class Game{
                 Board[i][j].captured=-1;
     }
   
-    void string_to_move_cur(string move,int id,state Board1[8][8],int &crushed){ // executes a valid move on the game board
-        //cout<<"Time to move "<<move<<endl;
-        int j = (int)(move[1]) - 96; // stores movement across a,b,...
-        int i = (int)(move[2]) - 48 ;   // stores from 1,2..
-        if(!isdigit(move[0])){
+    void string_to_move_cur(string move,int id,state Board1[8][8],int &crushed) { // executes a valid move on the game board
+        int j = (int)(move[1]) - 96;    // stores movement across a,b,...
+        int i = (int)(move[2]) - 48;    // stores from 1,2..
+        if(!isdigit(move[0])) {
             assert(Board1[i-1][j-1].captured == -1);
             int x;
             if(move[0]=='F') x = 0;
@@ -121,70 +123,65 @@ class Game{
                 x = x+3;    // Maps the pices to those of the opponent (3,4,5)
             Board1[i-1][j-1].captured = x;
             Board1[i-1][j-1].state_stack.push(x);
-            if(move[0] == 'F' || move[0] == 'S'){
+            if(move[0] == 'F' || move[0] == 'S') {
                 if(id == player_id) 
                     cur_player.no_flat--;       
-                else 
+                else  
                     other_player.no_flat--;     
             }   
-            else{   
+            else {   
                 if(id == player_id) 
                     cur_player.capstone--;
                 else 
                     other_player.capstone--;
             } 
         }
-        else{
+        else {
             int no_picked = (int) move[0],top;
-            no_picked-=48;
+            no_picked -= 48;
             stack<int> picked;
-            //cout<<"Picking "<<endl;
-            for(int l = 0; l < no_picked; l++){
+            for(int l = 0; l < no_picked; l++) {
                 top = Board1[i-1][j-1].state_stack.top();
                 Board1[i-1][j-1].state_stack.pop();
                 picked.push(top);
             }
-            //cout<<"Picked "<<picked.size()<<endl;
             if(Board1[i-1][j-1].state_stack.size() != 0)
                 Board1[i-1][j-1].captured = Board1[i-1][j-1].state_stack.top();
             else
                 Board1[i-1][j-1].captured = -1; 
             char dir = move[3];
             vector<int> drop;
-            for(int l = 4; l < move.length(); l++)
-            {
-                char m_ch=move[l];
-                int i1=(int)m_ch -48;
+            for(int l = 4; l < move.length(); l++) {
+                char m_ch = move[l];
+                int i1 = (int)m_ch - 48;
                 drop.push_back(i1);
             }
-            //cout<<"Drops calculated "<<endl;
             int mi, mj;
             if(dir == '+')
-                {mi = 1; mj = 0;}
+                mi = 1; mj = 0;
             else if(dir == '-')
-                {mi = -1; mj = 0;}
+                mi = -1; mj = 0;
             else if(dir == '>')
-                {mi = 0; mj = 1; }
+                mi = 0; mj = 1;
             else
-                {mi = 0; mj = -1; }
+                mi = 0; mj = -1;
                 int w1,w2;  
-            for(int k = 1; k <= drop.size(); k++){
-                //cout<<"drop size "<<drop[k-1]<<endl;
-                w1=i-1+k*mi;w2=j-1+k*mj;
+            for(int k = 1; k <= drop.size(); k++) {
+                w1 = i-1+k*mi;
+                w2 = j-1+k*mj;
                 stack<int> tempo(Board1[w1][w2].state_stack);
-                int cap=Board1[w1][w2].captured;
+                int cap = Board1[w1][w2].captured;
                 int x1 = 1;
-                int top1,t1;
-                t1=Board1[w1][w2].captured; 
-                while(x1 <= drop[k-1]){
+                int top1, t1;
+                t1 = Board1[w1][w2].captured; 
+                while(x1 <= drop[k-1]) {
                     top1 = picked.top();
                     picked.pop();
-                    if(drop[k-1]==1 && t1 % 3==1)// Implies that there is a standing stone
-                    {
-                    int xw=tempo.top();
-                    tempo.pop();
-                    tempo.push(xw-1);
-                    crushed=1;      
+                    if(drop[k-1] == 1 && t1 % 3 == 1) {
+                        int xw = tempo.top();
+                        tempo.pop();
+                        tempo.push(xw-1);
+                        crushed=1;      
                     }   
                     t1 = top1;
                     tempo.push(top1);
@@ -194,51 +191,41 @@ class Game{
                 swap(tempo,Board1[w1][w2].state_stack);   
             } 
         }
-      //  cout<<"Move ok"<<endl;
     }
 
-    void undo_move(string move,int id,state gen_Board[8][8],int crushed)
-    {
-        //cout<<"Time to undo "<<move<<endl;
-        int j = (int)(move[1]) - 96; // stores movement across a,b,...
-        int i = (int)(move[2]) - 48 ;   // stores from 1,2..
+    void undo_move(string move,int id,state gen_Board[8][8],int crushed) {
+        int j = (int)(move[1]) - 96;    // stores movement across a,b,...
+        int i = (int)(move[2]) - 48;    // stores from 1,2..
         // if first position is integer then its a Move move else a place
         if(!isdigit(move[0])){
-            //assert(Board1[i-1][j-1].captured == -1);
-           // cout<<"Time to undo place"<<endl;
             int x;
             gen_Board[i-1][j-1].captured = -1;
-           // cout<<"Removing "<<gen_Board[i-1][j-1].state_stack.top()<<"from "<<i<<","<<j<<endl;
             gen_Board[i-1][j-1].state_stack.pop();
-            if(move[0] == 'F' || move[0] == 'S'){
+            if(move[0] == 'F' || move[0] == 'S') {
                 if(id == player_id) 
                     cur_player.no_flat++;       
                 else 
                     other_player.no_flat++;     
             }
-            else{   
+            else {   
                 if(id == player_id) 
                     cur_player.capstone++;
                 else 
                     other_player.capstone++;
             }
         }    
-        else
-        {   
-            //cout<<"undo move "<<move<<endl;
-            int no_picked = (int) move[0],top;
-            no_picked-=48;
-            int drops=move.length()-4;
+        else {   
+            int no_picked = (int)move[0], top;
+            no_picked -= 48;
+            int drops = move.length()-4;
             int dropped[8];
             char dir = move[3];
-            for(int l = 4; l < move.length(); l++)
-            {
-                char m_ch=move[l];
-                int i1=(int)m_ch -48;
-                dropped[l-4]=i1;
+            for(int l = 4; l < move.length(); l++) {
+                char m_ch = move[l];
+                int i1 = (int)m_ch -48;
+                dropped[l-4] = i1;
             }
             //dropped stores the amount it drops
-            //cout<<"checked dropping moves = "<<drops<<endl;
             int mi, mj;
             if(dir == '+')
                 {mi = 1; mj = 0; }
@@ -250,89 +237,74 @@ class Game{
                 {mi = 0; mj = -1;}
             stack<int> reverse_drop;
             int pick_up,w1,w2 ;
-            for(int k=drops;k>0;k--)
-            {
-                w1=i-1+k*mi;w2=j-1+k*mj;
-                pick_up=dropped[k-1];
-                //cout<<"going to pick up "<<pick_up<<" from "<<w1<<","<<w2<<endl;
-                int captured=gen_Board[w1][w2].captured;
-                if(k==drops && gen_Board[w1][w2].state_stack.size()>=2 && pick_up == 1 && captured % 3 == 2)
-                    {
+            for(int k=drops;k>0;k--) {
+                w1 = i-1+k*mi;
+                w2 = j-1+k*mj;
+                pick_up = dropped[k-1];
+                int captured = gen_Board[w1][w2].captured;
+                if(k == drops && gen_Board[w1][w2].state_stack.size() >= 2 && pick_up == 1 && captured % 3 == 2) {
                         reverse_drop.push(captured);
-                        //cout<<"Picked up "<<captured<<endl;
                         gen_Board[w1][w2].state_stack.pop();
                         captured = gen_Board[w1][w2].state_stack.top();
-                        if(captured % 3 == 0 && crushed == 1)
-                        {   // cout<<"yo"<<endl;
-                            int wx=captured;
+                        if(captured % 3 == 0 && crushed == 1) {
+                            int wx = captured;
                             gen_Board[w1][w2].state_stack.pop();
                             wx++;
                             gen_Board[w1][w2].state_stack.push(wx);
-                            gen_Board[w1][w2].captured=wx;
-                            //cout<<"Crushing avenged"<<endl;
+                            gen_Board[w1][w2].captured = wx;
                         }
-                        else 
-                        {
-                            gen_Board[w1][w2].captured=captured;
+                        else {
+                            gen_Board[w1][w2].captured = captured;
                         }       
                     }
-                else
-                {   
-                    int x1=1;
-                    while(x1<=pick_up)
-                    {   
+                else {   
+                    int x1 = 1;
+                    while(x1 <= pick_up) {   
                         reverse_drop.push(gen_Board[w1][w2].state_stack.top());
-                        //cout<<"Picked up "<<gen_Board[w1][w2].state_stack.top()<<endl;
                         gen_Board[w1][w2].state_stack.pop();
                         x1++;
                     }
-                    if(gen_Board[w1][w2].state_stack.size()==0)
-                        gen_Board[w1][w2].captured=-1;
+                    if(gen_Board[w1][w2].state_stack.size() == 0)
+                        gen_Board[w1][w2].captured = -1;
                     else
-                        gen_Board[w1][w2].captured=gen_Board[w1][w2].state_stack.top();
-
+                        gen_Board[w1][w2].captured = gen_Board[w1][w2].state_stack.top();
                 }
             }
-            //cout<<"Time to put back "<<reverse_drop.size()<<endl;
-            while(reverse_drop.size()!=0)
-            {
-                int picking=reverse_drop.top();
+            while(reverse_drop.size() != 0) {
+                int picking = reverse_drop.top();
                 reverse_drop.pop();
                 gen_Board[i-1][j-1].state_stack.push(picking);
-            //  cout<<"Put back "<<picking<<endl;
             }
-
-
-            gen_Board[i-1][j-1].captured= gen_Board[i-1][j-1].state_stack.top();      
+            gen_Board[i-1][j-1].captured = gen_Board[i-1][j-1].state_stack.top();      
+        }
     }
-        //cout<<"Undo done"<<endl;
-}
-    vector< vector<int> > partition(int stack_size){   
-    vector< vector<int> > answer;
-    if(stack_size<=0) 
-        return answer;    
-    if(stack_size==1){
-        vector<int> t; t.push_back(1);
-        answer.push_back(t);
-        return answer;
-    }       
-    for(int i=1;i<stack_size;i++){
-        int j=stack_size-i;
-        vector<int> temp2;
-        vector<vector<int> > part = partition(j);
-        for(int i1=0;i1<part.size();i1++){
-            temp2=part[i1];
-            temp2.insert(temp2.begin(),i);
-            answer.push_back(temp2);
-        }   
-    }
-    vector<int> t1;
-    t1.push_back(stack_size);
-    answer.push_back(t1);
-    return answer;   
+    vector< vector<int> > partition(int stack_size) {   
+        vector< vector<int> > answer;
+        if(stack_size <= 0) 
+            return answer;    
+        if(stack_size == 1) {
+            vector<int> t; 
+            t.push_back(1);
+            answer.push_back(t);
+            return answer;
+        }       
+        for(int i = 1; i < stack_size; i++) {
+            int j = stack_size-i;
+            vector<int> temp2;
+            vector<vector<int> > part = partition(j);
+            for(int i1 = 0; i1 < part.size(); i1++) {
+                temp2 = part[i1];
+                temp2.insert(temp2.begin(),i);
+                answer.push_back(temp2);
+            }   
+        }
+        vector<int> t1;
+        t1.push_back(stack_size);
+        answer.push_back(t1);
+        return answer;   
     }
 
-    stack<int> get_neighbors(int i, int j){
+    stack<int> get_neighbors(int i, int j) {
         stack<int> neighbors;
         if(i != 0)
             neighbors.push((i-1)*board_size + j);
@@ -345,60 +317,57 @@ class Game{
         return neighbors;
     }
 
-    void extract_ij(int pos, int &i, int &j){
+    void extract_ij(int pos, int &i, int &j) {
         i = pos / board_size;
         j = pos % board_size;
     }
 
-    int DFS(int i, int j, int myboard[8][8], string direction, int player_id, state gen_board[8][8]){
+    int DFS(int i, int j, int myboard[8][8], string direction, int player_id, state gen_board[8][8]) {
         bool road = false;
         stack<int> neighbors;
         neighbors = get_neighbors(i,j);
         int curr, curr_i, curr_j;
-        while(!neighbors.empty()){
+        while(!neighbors.empty()) {
             curr = neighbors.top();
             neighbors.pop();
             extract_ij(curr, curr_i, curr_j);
             if(myboard[curr_i][curr_j] == 1)
                 continue;
             myboard[curr_i][curr_j] = 1;
-            if(gen_board[curr_i][curr_j].captured == (0 + player_id * 3) || gen_board[curr_i][curr_j].captured == (2 + player_id * 3)){
-                if(direction == "horizontal"){
-                    if(curr_j == board_size - 1){
+            if(gen_board[curr_i][curr_j].captured == (0 + player_id * 3) || gen_board[curr_i][curr_j].captured == (2 + player_id * 3)) {
+                if(direction == "horizontal") {
+                    if(curr_j == board_size - 1)
                         return true;
-                    }
                     road = DFS(curr_i, curr_j, myboard, "horizontal", player_id, gen_board);
                 }
-                else if(direction == "vertical"){
-                    if(curr_i == board_size - 1){
+                else if(direction == "vertical")  {
+                    if(curr_i == board_size - 1)
                         return true;
-                    }
                     road = DFS(curr_i, curr_j, myboard, "vertical", player_id, gen_board);
                 }
-                if(road){
+                if(road)
                     return road;
-                }
             }
         }
         return road;  
     }
 
-    void reset_visited(int matrix[8][8]){
-        for(int i = 0; i < board_size; i++){
-            for(int j = 0; j < board_size; j++){
+    void reset_visited(int matrix[8][8]) {
+        for(int i = 0; i < board_size; i++) {
+            for(int j = 0; j < board_size; j++) {
                 matrix[i][j] = 0;
             }
         }
     }
 
-    double at_endstate(state gen_board[8][8]){
+    double at_endstate(state gen_board[8][8]) {
         bool road = false;
         int temp_board[8][8];
         reset_visited(temp_board);
         
-        for(int i = 0; i < board_size; i++){
+        for(int i = 0; i < board_size; i++) {
             int capt_i = gen_board[i][0].captured;
-            if((capt_i == 0 || capt_i == 2) && (temp_board[i][0] == 0)){
+            if((capt_i == 0 || capt_i == 2) && (temp_board[i][0] == 0)) {
                 temp_board[i][0] = 1;
                 road = DFS(i, 0, temp_board, "horizontal", 0, gen_board);
                 if(road){
@@ -408,9 +377,9 @@ class Game{
         }
         reset_visited(temp_board);
 
-        for(int i = 0; i < board_size; i++){
+        for(int i = 0; i < board_size; i++) {
             int capt_i = gen_board[i][0].captured;
-            if((capt_i == 3 || capt_i == 5) && (temp_board[i][0] == 0)){
+            if((capt_i == 3 || capt_i == 5) && (temp_board[i][0] == 0)) {
                 temp_board[i][0] = 1;
                 road = DFS(i, 0, temp_board, "horizontal", 1, gen_board);
                 if(road){
@@ -420,9 +389,9 @@ class Game{
         }
         reset_visited(temp_board);
         
-        for(int j = 0; j < board_size; j++){
+        for(int j = 0; j < board_size; j++) {
             int capt_j = gen_board[0][j].captured;
-            if((capt_j == 0 || capt_j == 2) && (temp_board[0][j] == 0)){
+            if((capt_j == 0 || capt_j == 2) && (temp_board[0][j] == 0)) {
                 temp_board[0][j] = 1;
                 road = DFS(0, j, temp_board, "vertical", 0, gen_board);
                 if(road){
@@ -432,9 +401,9 @@ class Game{
         }
         reset_visited(temp_board);
 
-        for(int j = 0; j < board_size; j++){
+        for(int j = 0; j < board_size; j++) {
             int capt_j = gen_board[0][j].captured;
-            if((capt_j == 3 || capt_j == 5) && (temp_board[0][j] == 0)){
+            if((capt_j == 3 || capt_j == 5) && (temp_board[0][j] == 0)) {
                 temp_board[0][j] = 1;
                 road = DFS(0, j, temp_board, "vertical", 1, gen_board);
                 if(road){
@@ -442,24 +411,25 @@ class Game{
                 }
             }    
         }
-        //reset_visited(temp_board);
-        float flat_val=0.0;
-        bool flat_win_check=flat_win(gen_board,flat_val);
+
+        float flat_val = 0.0;
+        bool flat_win_check = flat_win(gen_board,flat_val);
         if(!flat_win_check)
-        	return 0.0;
-    	else 
-    		return flat_val;
+            return 0.0;
+        else 
+            return flat_val;
     }
 
-    void print_board(){
-        for(int i = 0; i < board_size; i++){
-            for(int j = 0; j < board_size; j++){
+    void print_board() {
+        for(int i = 0; i < board_size; i++) {
+            for(int j = 0; j < board_size; j++) {
                 stack<int> temp(Board[i][j].state_stack);
-                if(temp.size()==0)
-                { cerr<<"-1"<<"\t\t";
-                continue;}  
-                while(temp.size()!=0){
-                    int x=temp.top();
+                if(temp.size() == 0) {
+                    cerr<<"-1"<<"\t\t";
+                    continue;
+                }  
+                while(temp.size()!=0) {
+                    int x = temp.top();
                     temp.pop();
                     cerr<<x<<":";
                 }
@@ -818,78 +788,51 @@ class Game{
     }
 
     double best_move(state Board1[8][8],double alpha,double beta,int depth,string &best_move_chosen,bool minimum){
-        
-        //cout<<"best"<<endl;
-       // best_called++;
         vector<string> neigh;
-        if(depth==0)
-        {
-         return get_heuristic(Board1,false);
-        }
-        //if(depth==0) return 1.0;  
+        if(depth == 0)
+            return get_heuristic(Board1,false);
         int i11;
-        if(minimum)
-        {
-        if(player_id==1) i11=2;
-        else i11=1;
-        neigh=generate_all_moves(i11,Board1);
+        if(minimum) {
+            if(player_id==1) 
+                i11=2;
+            else 
+                i11=1;
+            neigh=generate_all_moves(i11,Board1);
         }
-        else
-        {   
-        neigh=generate_all_moves(player_id,Board1);
-        i11=player_id;
+        else {   
+            neigh=generate_all_moves(player_id,Board1);
+            i11=player_id;
         }
-       // state cur_Board[8][8];
         vector<pair<double,string> > values;
-
         double min_val=LONG_MAX,max_val=LONG_MIN,child;
-
-        for(int i=0;i<neigh.size();i++)
-        {
-        
+        for(int i=0;i<neigh.size();i++) {
             int crushed=0;
-            //cout<<"Consider "<<neigh[i]<<endl;
             string_to_move_cur(neigh[i],i11,Board1,crushed);
-           // cout<<"undo1"<<endl;
             double ans=at_endstate(Board1);
             double val;
             if(ans==1.0)
-            {
-            //cout<<"Found a win"<<endl;
-            val = LONG_MAX;
-            }   
+                val = LONG_MAX;
             else if(ans==-1.0)
-            {
-            //cout<<"Found a loss"<<endl;
-            val = LONG_MIN;
-            }
+                val = LONG_MIN;
             else if(ans==0.0)
-            val=get_heuristic(Board1,false);
-            else
-            {
-            cerr<<"Detected a flat ending"<<endl;	
-            val= ans*LONG_MAX;	
+                val=get_heuristic(Board1,false);
+            else {
+                cerr<<"Detected a flat ending"<<endl;   
+                val= ans*LONG_MAX;  
             }
             values.push_back(std::make_pair(val,neigh[i]));
             undo_move(neigh[i],i11,Board1,crushed);
-            
         }
-        //cout<<"Time to make heap"<<endl;
-        if(minimum){
+
+        if(minimum) {
             priority_queue<pair<double,string>, vector<pair<double,string> >, Compare_max> maxi_heap(values.begin(),values.end());          
-            for(int i=0;i<neigh.size();i++)
-            {
-                // cout<<"in "<<i<<" at depth "<<depth<<endl;
+            for(int i=0;i<neigh.size();i++) {
                 string move_taken="";
                 double heur_val=maxi_heap.top().first;
-                //cout<<heur_val<<endl;
                 move_taken=maxi_heap.top().second;
                 maxi_heap.pop();
-                
                 int crushed=0; 
                 string_to_move_cur(move_taken,i11,Board1,crushed);
-                //cout<<"undo2"<<endl;
-                //if(depth!=1)
                 string tmp="";
                 if(heur_val == LONG_MAX)
                     child = LONG_MAX;
@@ -898,33 +841,26 @@ class Game{
                 else if(depth == 1)
                     child =heur_val; 
                 else    
-                child=best_move(Board1,alpha,beta,(depth-1),tmp,!minimum);
+                    child=best_move(Board1,alpha,beta,(depth-1),tmp,!minimum);
                 beta=min(beta,child);
                 min_val=min(child,min_val);
                 if(child==min_val) best_move_chosen=move_taken;    
                 undo_move(move_taken,i11,Board1,crushed);
-            
-                if(alpha>beta)
-                {   
-                   // prune++;
+                if(alpha>beta) {   
                     return child;
                 }   
             }
             return min_val;
         }
-        else{
+        else {
             priority_queue<pair<double,string>, vector<pair<double,string> >, Compare_min> mini_heap(values.begin(),values.end());   
-            for(int i=0;i<neigh.size();i++)
-            { 
-                // cout<<"in "<<i<<" at depth "<<depth<<endl;
+            for(int i=0;i<neigh.size();i++) { 
                 string move_taken="";
                 double heur_val=mini_heap.top().first;
                 move_taken=mini_heap.top().second;
                 mini_heap.pop();
                 int crushed=0;
                 string_to_move_cur(move_taken,i11,Board1,crushed);
-               // cout<<"undo3"<<endl;
-                //if(depth!=1)
                 string tmp="";
                 if(heur_val == LONG_MAX)
                     child = LONG_MAX;
@@ -933,15 +869,13 @@ class Game{
                 else if(depth == 1)
                     child =heur_val; 
                 else 
-                child=best_move(Board1,alpha,beta,(depth-1),tmp,!minimum);
+                    child=best_move(Board1,alpha,beta,(depth-1),tmp,!minimum);
                 alpha=max(alpha,child);
                 max_val=max(child,max_val);
                 if(child==max_val) 
                     best_move_chosen=move_taken;
                 undo_move(move_taken,i11,Board1,crushed);
-                if(alpha>beta)
-                {   
-                    //prune++;
+                if(alpha>beta) {   
                     return child;
                 }   
             }
