@@ -31,6 +31,7 @@ double stand_threat = 40;
 
 double mapping[3];
 double diff[8];
+float infl[8][8];
 
 // Define some global arrays
 int player_id;
@@ -463,19 +464,17 @@ stack<int> get_neighbors(int i, int j) {
         }
     }
 
-    void influence(int infl[8][8], state gen_board[8][8], float flat, float wall, float cap){
+    void influence(float infl_arr[8][8], state gen_board[8][8], float flat, float wall, float cap){
         for(int i = 0; i < board_size; i++){
             for(int j = 0; j < board_size; j++){
-                infl[i][j] = 0;
+                infl_arr[i][j] = 0.0;
             }
         }
         for(int i = 0; i < board_size; i++){
             for(int j = 0; j < board_size; j++){
                 // Map the value of k
-                int k;
+                float k;
                 int capt = gen_board[i][j].captured;
-                // stack<int> mystack(gen_board[i][j].state_stack);
-                // int size = mystack.size();
                 int temp;
                 if(capt == -1)
                     k = 0;
@@ -498,23 +497,23 @@ stack<int> get_neighbors(int i, int j) {
 
                 if(k != 0){
                     // Change current
-                    infl[i][j] += k;
-                        // Change up
-                        temp = gen_board[i-1][j].captured;
-                        if(i-1 >= 0 && (temp == -1 || temp %3 == 0 || (capt%3 == 2 && temp %3 != 2)))
-                            infl[i-1][j] += k;
-                        // Change down
-                        temp = gen_board[i+1][j].captured;
-                        if(i+1 < board_size && (temp == -1 || temp % 3 == 0 || (capt%3 == 2 && temp %3 != 2)))
-                            infl[i+1][j] += k;
-                        // Change left
-                        temp = gen_board[i][j-1].captured;
-                        if(j-1 >= 0 && (temp == -1 || temp % 3 == 0 || (capt%3 == 2 && temp %3 != 2)))
-                            infl[i][j-1] += k;
-                        // Change right
-                        temp = gen_board[i][j+1].captured;
-                        if(j+1 < board_size-1 && (temp == -1 || temp % 3 == 0 || (capt%3 == 2 && temp %3 != 2)))
-                            infl[i][j+1] += k;
+                    infl_arr[i][j] += k;
+                    // Change up
+                    temp = gen_board[i-1][j].captured;
+                    if(i-1 >= 0 && (temp == -1 || temp %3 == 0 || (capt%3 == 2 && temp %3 != 2)))
+                        infl_arr[i-1][j] += k;
+                    // Change down
+                    temp = gen_board[i+1][j].captured;
+                    if(i+1 < board_size && (temp == -1 || temp % 3 == 0 || (capt%3 == 2 && temp %3 != 2)))
+                        infl_arr[i+1][j] += k;
+                    // Change left
+                    temp = gen_board[i][j-1].captured;
+                    if(j-1 >= 0 && (temp == -1 || temp % 3 == 0 || (capt%3 == 2 && temp %3 != 2)))
+                        infl_arr[i][j-1] += k;
+                    // Change right
+                    temp = gen_board[i][j+1].captured;
+                    if(j+1 < board_size-1 && (temp == -1 || temp % 3 == 0 || (capt%3 == 2 && temp %3 != 2)))
+                        infl_arr[i][j+1] += k;
                 }
             }
         }
@@ -546,89 +545,87 @@ stack<int> get_neighbors(int i, int j) {
         }
 
         // NUMBER SQUARES CAPTURED
-        for(int i = 0; i < board_size; i++){
-            captured += (arr[i][0]-arr[i][3])*50 + (arr[i][2]-arr[i][5])*80;
-        }
+            for(int i = 0; i < board_size; i++){
+                captured += (arr[i][0]-arr[i][3])*50 + (arr[i][2]-arr[i][5])*80;
+            }
 
         // SAME ROW PIECES HAS MORE WEIGHT
-        float composition_value = 0.0;
-        int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
-        int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
-        int capt_diff;
-        float against_wall = 40, for_wall = 10;
-        float capture_advantage = 0.0;
-        float capture_disadvantage = 0.0;
-        float wall_disadvantage = 0.0;
-        float Center_weight = 5;
-        float center_value = 0.0;
-        for(int i=0;i<2*board_size;i++){
-            flat_capt_me = arr[i][0];
-            wall_capt_me = arr[i][1];
-            cap_capt_me = arr[i][2];
-            my_capt = flat_capt_me + cap_capt_me;
-            flat_capt_you = arr[i][3];
-            wall_capt_you = arr[i][4];
-            cap_capt_you = arr[i][5];
-            your_capt = flat_capt_you + cap_capt_you;
-            capt_diff = my_capt - your_capt;
+            float composition_value = 0.0;
+            int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
+            int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
+            int capt_diff;
+            float against_wall = 40, for_wall = 10;
+            float capture_advantage = 0.0;
+            float capture_disadvantage = 0.0;
+            float wall_disadvantage = 0.0;
+            float center_weight = 5;
+            float center_value = 0.0;
+            for(int i=0;i<2*board_size;i++){
+                flat_capt_me = arr[i][0];
+                wall_capt_me = arr[i][1];
+                cap_capt_me = arr[i][2];
+                my_capt = flat_capt_me + cap_capt_me;
+                flat_capt_you = arr[i][3];
+                wall_capt_you = arr[i][4];
+                cap_capt_you = arr[i][5];
+                your_capt = flat_capt_you + cap_capt_you;
+                capt_diff = my_capt - your_capt;
+                capture_advantage = diff[my_capt];
+                capture_disadvantage = diff[your_capt];
 
-            capture_advantage = diff[my_capt];
-            capture_disadvantage = diff[your_capt];
-            if(capt_diff > 0)
-                wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*against_wall + diff[capt_diff]*(wall_capt_me + wall_capt_you);
-            else if(capt_diff < 0)
-                wall_disadvantage = (wall_capt_me*for_wall + wall_capt_you*against_wall - diff[-1*capt_diff]*(wall_capt_me + wall_capt_you));
-            else
-                wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*for_wall;
-            composition_value += capture_advantage - capture_disadvantage - 0.9*wall_disadvantage;
-            // CENTER CONTROL
-            if(i < board_size)
-                center_value += (cap_capt_me - cap_capt_you)*(board_size-i-1)*i*center_value;
-            else
-                center_value += (cap_capt_me - cap_capt_you)*(2*board_size-i-1)*(i-board_size)*center_value;
-        }
-
+                if(capt_diff > 0)
+                    wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*against_wall + diff[capt_diff]*(wall_capt_me + wall_capt_you);
+                else if(capt_diff < 0)
+                    wall_disadvantage = (wall_capt_me*for_wall + wall_capt_you*against_wall - diff[-1*capt_diff]*(wall_capt_me + wall_capt_you));
+                else
+                    wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*for_wall;
+                composition_value += capture_advantage - capture_disadvantage - 0.9*wall_disadvantage;
+                
+                // CENTER CONTROL
+                if(i < board_size)
+                    center_value += (cap_capt_me - cap_capt_you)*(board_size-i-1)*i*center_weight;
+                else
+                    center_value += (cap_capt_me - cap_capt_you)*(2*board_size-i-1)*(i-board_size)*center_weight;
+            }
 
         // CURRENT PIECE HOLDINGS
-        // Check to see if capstone is available
-        if(other_player.capstone == 1)
-            piece_val -= 60;
-        if(cur_player.capstone == 1)
-            piece_val += 60;
+            // Check to see if capstone is available
+            if(other_player.capstone == 1)
+                piece_val -= 60;
+            if(cur_player.capstone == 1)
+                piece_val += 60;
 
-        // See how many flatstones left
-        piece_val -= 20*cur_player.no_flat;
-        piece_val += 20*other_player.no_flat;
+            // See how many flatstones left
+            piece_val -= 20*cur_player.no_flat;
+            piece_val += 20*other_player.no_flat;
 
-        double infl_value = 0;
-        int infl[8][8];
-        float flat = 3;
-        float wall = 3.1;
-        float cap = 3.3;
-        influence(infl, gen_board, flat, wall, cap);
-        for(int i = 0; i < board_size; i++){
-            for(int j = 0; j < board_size; j++){
-                if(infl[i][j] > 0)
-                    infl_value += pow(infl[i][j],2.0);
-                else
-                    infl_value -= pow(infl[i][j],2.0);
+        // INFLUENCE
+            double infl_value = 0;
+            float flat = 3;
+            float wall = 3.1;
+            float cap = 3.3;
+            influence(infl, gen_board, flat, wall, cap);
+            for(int i = 0; i < board_size; i++){
+                for(int j = 0; j < board_size; j++){
+                    if(infl[i][j] > 0)
+                        infl_value += pow(infl[i][j],2.0);
+                    else
+                        infl_value -= pow(infl[i][j],2.0);
+                }
             }
-        }
 
         heuristic_value = 1.1*captured + 1.5*composition_value + piece_val + 0.95*infl_value + center_value;   
-
         return heuristic_value;
     }
 
 vector<string> generate_all_moves(int id, state gen_board[8][8]){
-    // Vector of moves
+    
+    // Initialize variables
     vector<string> all_moves;
     string move;
     bool valid;
     Player myplayer;
-    int index;
-    int capt;
-    int curr_capt;
+    int index, capt, curr_capt;
 
     if(id == player_id){
         myplayer = cur_player;
@@ -638,153 +635,148 @@ vector<string> generate_all_moves(int id, state gen_board[8][8]){
         myplayer = other_player;
         index = 1;
     }
-        for(int i = 0; i < board_size; i++){
-            for(int j = 0; j < board_size; j++){
-                capt = gen_board[i][j].captured;
-                if(capt == -1){
-                    if(myplayer.no_flat != 0){                            
-                        move = "F" ;move+= (char)(97+j); move+=(char)(49+i);
-                        all_moves.push_back(move);
-                        move = "S" ;move+= (char)(97+j); move+=(char)(49+i);
-                        all_moves.push_back(move);                            
-                    }
-                    if(myplayer.capstone != 0){
-                        move = "C" ;move+= (char)(97+j); move+=(char)(49+i);
-                        all_moves.push_back(move);                            
-                    }
+    for(int i = 0; i < board_size; i++){
+        for(int j = 0; j < board_size; j++){
+            capt = gen_board[i][j].captured;
+            if(capt == -1){
+                if(myplayer.no_flat != 0){                            
+                    move = "F" ; move += (char)(97+j); move += (char)(49+i);
+                    all_moves.push_back(move);
+                    move = "S" ; move += (char)(97+j); move += (char)(49+i);
+                    all_moves.push_back(move);                            
                 }
-                else if(capt >= 3*index && capt < 3 + 3*index){
-                    int temp_size = gen_board[i][j].state_stack.size();
-                    int stack_size = min(temp_size, board_size);
-                    int dist_up = i;
-                    int dist_down = board_size - 1 - i;
-                    int dist_left = j; 
-                    int dist_right = board_size - 1 - j;
-                    vector< vector<int> > part_list;
+                if(myplayer.capstone != 0){
+                    move = "C" ; move += (char)(97+j); move += (char)(49+i);
+                    all_moves.push_back(move);                            
+                }
+            }
+            else if(capt >= 3*index && capt < 3 + 3*index){
+                int temp_size = gen_board[i][j].state_stack.size();
+                int stack_size = min(temp_size, board_size);
+                int dist_up = i;
+                int dist_down = board_size - 1 - i;
+                int dist_left = j; 
+                int dist_right = board_size - 1 - j;
+                vector< vector<int> > part_list;
 
-                    for(int x = 1; x <= stack_size; x++){
-                        part_list = partition(x); // Stores all possible permutations
-                        for(int y = 0; y < part_list.size(); y++){
-                            int part_size =part_list[y].size(); // Checks to see how many non zero elements
-                            if(part_size<=dist_up){
-                                
-                                valid = true;
-                                move =""; move +=(char)(48+x); move +=(char)(97+j); move += (char)(49+i); move += "-";
-                                int z1=-1;
-                                for(int z = 0; z < part_size; z++){
-                                    curr_capt = gen_board[i-z-1][j].captured;
-                                    if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
-                                        move += (char)(48+part_list[y][z]);
-                                    }  
-                                    else{
-                                        valid = false;
-                                        z1 = z;
-                                        break;
-                                    }
-                                }
-                                int z=part_size-1;
+                for(int x = 1; x <= stack_size; x++){
+                    part_list = partition(x); // Stores all possible permutations
+                    for(int y = 0; y < part_list.size(); y++){
+                        int part_size = part_list[y].size(); 
+                        if(part_size <= dist_up){ 
+                            valid = true;
+                            move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move += "-";
+                            int z1 = -1;
+                            for(int z = 0; z < part_size; z++){
                                 curr_capt = gen_board[i-z-1][j].captured;
-                                if(z1 == z)
-                                    if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
-                                            move += "1";
-                                            valid = true;
-                                        }
-                                if(valid)
-                                    all_moves.push_back(move);
-                            }
-                            if(part_size<=dist_down){
-                                
-                                valid = true;
-                                move = "";move +=(char)(48+x); move +=(char)(97+j); move += (char)(49+i); move += "+";
-                                int z1=-1;
-                                for(int z = 0; z < part_size; z++){
-                                    curr_capt = gen_board[i+z+1][j].captured;
-                                    if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
-                                        move += (char)(48+part_list[y][z]);
-                                    }  
-                                    else{
-                                        valid = false;
-                                        z1 = z;
-                                        break;
-                                    }
+                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
+                                    move += (char)(48+part_list[y][z]);
+                                }  
+                                else{
+                                    valid = false;
+                                    z1 = z;
+                                    break;
                                 }
-                                int z=part_size-1;
+                            }
+                            int z = part_size-1;
+                            curr_capt = gen_board[i-z-1][j].captured;
+                            if(z1 == z)
+                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
+                                        move += "1";
+                                        valid = true;
+                                    }
+                            if(valid)
+                                all_moves.push_back(move);
+                        }
+                        if(part_size<=dist_down){
+                            valid = true;
+                            move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move += "+";
+                            int z1=-1;
+                            for(int z = 0; z < part_size; z++){
                                 curr_capt = gen_board[i+z+1][j].captured;
-                                if(z1 == z)
-                                    if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
-                                            move += "1";
-                                            valid = true;
-                                        }
-                                if(valid)
-                                    all_moves.push_back(move);
-                            }
-                            if(part_size<=dist_left){
-                                
-                                valid = true;
-                                move = "";move+=(char)(48+x); move+=  (char)(97+j); move+= (char)(49+i); move+="<";
-                                int z1=-1;
-                                for(int z = 0; z < part_size; z++){
-                                    curr_capt = gen_board[i][j-z-1].captured;
-                                    if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
-                                        move += (char)(48+part_list[y][z]);
-                                    }  
-                                    else{
-                                        valid = false;
-                                        z1 = z;
-                                        break;
-                                    }
+                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
+                                    move += (char)(48+part_list[y][z]);
+                                }  
+                                else{
+                                    valid = false;
+                                    z1 = z;
+                                    break;
                                 }
-                                int z=part_size-1;
+                            }
+                            int z=part_size-1;
+                            curr_capt = gen_board[i+z+1][j].captured;
+                            if(z1 == z)
+                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
+                                        move += "1";
+                                        valid = true;
+                                    }
+                            if(valid)
+                                all_moves.push_back(move);
+                        }
+                        if(part_size<=dist_left){
+                            valid = true;
+                            move = ""; move+=(char)(48+x); move += (char)(97+j); move += (char)(49+i); move+="<";
+                            int z1=-1;
+                            for(int z = 0; z < part_size; z++){
                                 curr_capt = gen_board[i][j-z-1].captured;
-                                if(z1 == z)
-                                    if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
-                                            move += "1";
-                                            valid = true;
-                                        }
-                                if(valid)
-                                    all_moves.push_back(move);
-                            }
-                            if(part_size<=dist_right){
-                                
-                                valid = true;
-                                move =""; move+=(char)(48+x); move+= (char)(97+j); move+=(char)(49+i); move+= ">";
-                                int z1=-1;
-                                for(int z = 0; z < part_size; z++){
-                                    curr_capt = gen_board[i][j+z+1].captured;
-                                    if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
-                                        move += (char)(48+part_list[y][z]);
-                                    }  
-                                    else{
-                                        valid = false;
-                                        z1 = z;
-                                        break;
-                                    }
+                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
+                                    move += (char)(48+part_list[y][z]);
+                                }  
+                                else{
+                                    valid = false;
+                                    z1 = z;
+                                    break;
                                 }
-                                int z=part_size-1;
-                                curr_capt = gen_board[i][j+z+1].captured;
-                                if(z1 == z)
-                                    if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
-                                            move += "1";
-                                            valid = true;
-                                        }
-                                if(valid)
-                                    all_moves.push_back(move);
                             }
+                            int z=part_size-1;
+                            curr_capt = gen_board[i][j-z-1].captured;
+                            if(z1 == z)
+                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
+                                        move += "1";
+                                        valid = true;
+                                    }
+                            if(valid)
+                                all_moves.push_back(move);
+                        }
+                        if(part_size<=dist_right){
+                            valid = true;
+                            move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move+= ">";
+                            int z1=-1;
+                            for(int z = 0; z < part_size; z++){
+                                curr_capt = gen_board[i][j+z+1].captured;
+                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
+                                    move += (char)(48+part_list[y][z]);
+                                }  
+                                else{
+                                    valid = false;
+                                    z1 = z;
+                                    break;
+                                }
+                            }
+                            int z=part_size-1;
+                            curr_capt = gen_board[i][j+z+1].captured;
+                            if(z1 == z)
+                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
+                                        move += "1";
+                                        valid = true;
+                                    }
+                            if(valid)
+                                all_moves.push_back(move);
                         }
                     }
                 }
             }
         }
+    }
     return all_moves;
 }
 
 double best_move(state myboard[8][8],double alpha,double beta,int depth,string &best_move_chosen,bool minimum){
     // Declare Variables
     vector<string> moves;
-    int move_player, crushed;
+    int move_player;
     vector<pair<double,string> > values;
-    double min_val = LONG_MAX, max_val = LONG_MIN, child, ans, val, heur_val;
-    string move_taken = "", tmp = "";
+    double min_val = LONG_MAX, max_val = LONG_MIN, child, ans, val;
 
     // Operations
     if(depth == 0)
@@ -803,7 +795,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     moves = generate_all_moves(move_player, myboard);   
 
     for(int i = 0; i < moves.size(); i++) {
-        crushed = 0;
+        int crushed = 0;
         string_to_move_cur(neigh[i], move_player, myboard, crushed);
         ans = at_endstate(myboard);
         if(ans == 1.0)
@@ -823,13 +815,13 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     if(minimum) {
         priority_queue<pair<double,string>, vector<pair<double,string> >, Compare_max> maxi_heap(values.begin(),values.end());          
         for(int i = 0; i < moves.size(); i++) {
-            move_taken = "";
-            heur_val = maxi_heap.top().first;
+            string move_taken = "";
+            double heur_val = maxi_heap.top().first;
             move_taken = maxi_heap.top().second;
             maxi_heap.pop();
-            crushed = 0; 
+            int crushed = 0; 
             string_to_move_cur(move_taken, i11, myboard, crushed);
-            tmp = "";
+            string tmp = "";
             if(heur_val == LONG_MAX)
                 child = LONG_MAX;
             else if(heur_val == LONG_MIN)
@@ -851,13 +843,13 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     else {
         priority_queue<pair<double,string>, vector<pair<double,string> >, Compare_min> mini_heap(values.begin(),values.end());   
         for(int i = 0; i < moves.size(); i++) { 
-            move_taken = "";
-            heur_val = mini_heap.top().first;
+            string move_taken = "";
+            double heur_val = mini_heap.top().first;
             move_taken = mini_heap.top().second;
             mini_heap.pop();
-            crushed = 0;
+            int crushed = 0;
             string_to_move_cur(move_taken, move_player, myboard, crushed);
-            tmp = "";
+            string tmp = "";
             if(heur_val == LONG_MAX)
                 child = LONG_MAX;
             else if(heur_val == LONG_MIN)
