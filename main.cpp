@@ -94,7 +94,7 @@ class Player{
     }
 }cur_player, other_player;
 
-void string_to_move_cur(string move,int id,state myBoard[8][8],int &crushed) { // executes a valid move on the game board
+void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed) { // executes a valid move on the game board
     int j = (int)(move[1]) - 96;    // stores movement across a,b,...
     int i = (int)(move[2]) - 48;    // stores from 1,2..
     if(!isdigit(move[0])) {
@@ -157,7 +157,7 @@ void string_to_move_cur(string move,int id,state myBoard[8][8],int &crushed) { /
             mi = 0; 
             mj = -1;
         }
-            int w1,w2;  
+        int w1,w2;  
         for(int k = 1; k <= drop.size(); k++) {
             w1 = i-1+k*mi;
             w2 = j-1+k*mj;
@@ -796,7 +796,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
     for(int i = 0; i < moves.size(); i++) {
         int crushed = 0;
-        string_to_move_cur(neigh[i], move_player, myboard, crushed);
+        string_to_move_cur(moves[i], move_player, myboard, crushed);
         ans = at_endstate(myboard);
         if(ans == 1.0)
             val = LONG_MAX;
@@ -820,7 +820,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             move_taken = maxi_heap.top().second;
             maxi_heap.pop();
             int crushed = 0; 
-            string_to_move_cur(move_taken, i11, myboard, crushed);
+            string_to_move_cur(move_taken, move_player, myboard, crushed);
             string tmp = "";
             if(heur_val == LONG_MAX)
                 child = LONG_MAX;
@@ -942,9 +942,9 @@ int main(){
             string next_move="";
             double val;
             if(time_limit - time_player < 20 || count < 4)
-                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,3,next_move,false);
-            else 
                 val=best_move(Board,LONG_MIN/2,LONG_MAX/2,4,next_move,false);
+            else 
+                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,5,next_move,false);
             cerr<<"Count is "<<count<<endl;
             cerr<<"Finished Generating"<<poss.size()<<endl;
             string_to_move_cur(next_move,2,Board,crush);
@@ -953,7 +953,6 @@ int main(){
             end_time = clock();
             time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
             // print_board(Board);
-            cerr<<endl;
             if(at_endstate(Board)!=0.0){
                 cerr<<"You are the winner"<<endl;
             }
@@ -980,9 +979,9 @@ int main(){
             string next_move;
             double val;
             if(time_limit - time_player < 20 || count < 4)
-                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,3,next_move,false);
-            else 
                 val=best_move(Board,LONG_MIN/2,LONG_MAX/2,4,next_move,false);
+            else 
+                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,5,next_move,false);
             cerr<<"Count is "<<count<<endl;
             count++;
             cout<<next_move<<endl;
