@@ -36,7 +36,22 @@ string all_moves[5000];
 // Define some global arrays
 int player_id;
 int board_size;
+//get_heuristic variables
+double heuristic_value = 0.0;
+double captured = 0.0;
+double threats = 0.0;
+double piece_val = 0.0;
 
+float composition_value = 0.0;
+int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
+int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
+int capt_diff;
+float against_wall = 40, for_wall = 10;
+float capture_advantage = 0.0;
+float capture_disadvantage = 0.0;
+float wall_disadvantage = 0.0;
+float center_weight = 5;
+float center_value = 0.0;
 struct Compare_min
 {
     bool operator()(pair<double,string> p1,pair<double,string> p2)
@@ -521,10 +536,10 @@ stack<int> get_neighbors(int i, int j) {
 
    double get_heuristic(state gen_board[8][8], bool debug){
         // Define different heuristic values
-        double heuristic_value = 0.0;
-        double captured = 0.0;
-        double threats = 0.0;
-        double piece_val = 0.0;
+        heuristic_value = 0.0;
+        captured = 0.0;
+        threats = 0.0;
+        piece_val = 0.0;
 
         // Initialize our array
         int arr[16][6];// 0 to board_size -1 are for rows
@@ -532,7 +547,7 @@ stack<int> get_neighbors(int i, int j) {
             for(int j=0;j<6;j++)
                 arr[i][j]=0;
         
-        // Caluculate pieces in each row and column
+        // Calculate pieces in each row and column
         for(int i=0;i<board_size;i++){
             for(int j=0;j<board_size;j++){
                 int capt=gen_board[i][j].captured;
@@ -550,16 +565,16 @@ stack<int> get_neighbors(int i, int j) {
             }
 
         // SAME ROW PIECES HAS MORE WEIGHT
-            float composition_value = 0.0;
-            int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
-            int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
-            int capt_diff;
-            float against_wall = 40, for_wall = 10;
-            float capture_advantage = 0.0;
-            float capture_disadvantage = 0.0;
-            float wall_disadvantage = 0.0;
-            float center_weight = 5;
-            float center_value = 0.0;
+             composition_value = 0.0;
+            // int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
+            // int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
+            // int capt_diff;
+            // float against_wall = 40, for_wall = 10;
+            // capture_advantage = 0.0;
+            // capture_disadvantage = 0.0;
+            // wall_disadvantage = 0.0;
+            // center_weight = 5;
+               center_value = 0.0;
             for(int i=0;i<2*board_size;i++){
                 flat_capt_me = arr[i][0];
                 wall_capt_me = arr[i][1];
