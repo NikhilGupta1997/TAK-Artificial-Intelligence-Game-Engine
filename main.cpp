@@ -32,7 +32,7 @@ double stand_threat = 40;
 double mapping[3];
 double diff[8];
 float infl[8][8];
-
+string all_moves[5000];
 // Define some global arrays
 int player_id;
 int board_size;
@@ -618,10 +618,11 @@ stack<int> get_neighbors(int i, int j) {
         return heuristic_value;
     }
 
-vector<string> generate_all_moves(int id, state gen_board[8][8]){
+void generate_all_moves(int id, state gen_board[8][8],int &size){
     
     // Initialize variables
-    vector<string> all_moves;
+    //vector<string> all_moves;
+    size=0;
     string move;
     bool valid;
     Player myplayer;
@@ -641,13 +642,16 @@ vector<string> generate_all_moves(int id, state gen_board[8][8]){
             if(capt == -1){
                 if(myplayer.no_flat != 0){                            
                     move = "F" ; move += (char)(97+j); move += (char)(49+i);
-                    all_moves.push_back(move);
+                    //all_moves.push_back(move);
+                    all_moves[size]=move; size++;
                     move = "S" ; move += (char)(97+j); move += (char)(49+i);
-                    all_moves.push_back(move);                            
+                    //all_moves.push_back(move); 
+                    all_moves[size]=move; size++;                           
                 }
                 if(myplayer.capstone != 0){
                     move = "C" ; move += (char)(97+j); move += (char)(49+i);
-                    all_moves.push_back(move);                            
+                    //all_moves.push_back(move);
+                    all_moves[size]=move; size++;                            
                 }
             }
             else if(capt >= 3*index && capt < 3 + 3*index){
@@ -686,7 +690,10 @@ vector<string> generate_all_moves(int id, state gen_board[8][8]){
                                         valid = true;
                                     }
                             if(valid)
-                                all_moves.push_back(move);
+                            {
+                               // all_moves.push_back(move);
+                             	all_moves[size]=move; size++;
+                            }
                         }
                         if(part_size<=dist_down){
                             valid = true;
@@ -711,7 +718,10 @@ vector<string> generate_all_moves(int id, state gen_board[8][8]){
                                         valid = true;
                                     }
                             if(valid)
-                                all_moves.push_back(move);
+                             {
+                              //  all_moves.push_back(move);
+                             all_moves[size]=move; size++;
+                             }
                         }
                         if(part_size<=dist_left){
                             valid = true;
@@ -736,7 +746,10 @@ vector<string> generate_all_moves(int id, state gen_board[8][8]){
                                         valid = true;
                                     }
                             if(valid)
-                                all_moves.push_back(move);
+                            {
+                            	all_moves[size]=move; size++;
+                                //all_moves.push_back(move);
+                            }
                         }
                         if(part_size<=dist_right){
                             valid = true;
@@ -761,19 +774,22 @@ vector<string> generate_all_moves(int id, state gen_board[8][8]){
                                         valid = true;
                                     }
                             if(valid)
-                                all_moves.push_back(move);
+                            {
+                               all_moves[size]=move; size++;
+                                //all_moves.push_back(move);
+                            }
                         }
                     }
                 }
             }
         }
     }
-    return all_moves;
+   // return all_moves;
 }
 
 double best_move(state myboard[8][8],double alpha,double beta,int depth,string &best_move_chosen,bool minimum){
     // Declare Variables
-    vector<string> moves;
+    //vector<string> moves;
     int move_player;
     vector<pair<double,string> > values;
     double min_val = LONG_MAX, max_val = LONG_MIN, child, ans, val;
@@ -791,12 +807,12 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     else {   
         move_player = player_id;
     }
-
-    moves = generate_all_moves(move_player, myboard);   
-
-    for(int i = 0; i < moves.size(); i++) {
+    int size=0;
+    //moves = generate_all_moves(move_player, myboard);   
+    generate_all_moves(move_player, myboard,size);
+    for(int i = 0; i < size; i++) {
         int crushed = 0;
-        string_to_move_cur(moves[i], move_player, myboard, crushed);
+        string_to_move_cur(all_moves[i], move_player, myboard, crushed);
         ans = at_endstate(myboard);
         if(ans == 1.0)
             val = LONG_MAX;
@@ -808,13 +824,13 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             cerr<<"Detected a flat ending"<<endl;   
             val= ans*LONG_MAX;  
         }
-        values.push_back(std::make_pair(val, moves[i]));
-        undo_move(moves[i], move_player, myboard, crushed);
+        values.push_back(std::make_pair(val, all_moves[i]));
+        undo_move(all_moves[i], move_player, myboard, crushed);
     }
 
     if(minimum) {
         priority_queue<pair<double,string>, vector<pair<double,string> >, Compare_max> maxi_heap(values.begin(),values.end());          
-        for(int i = 0; i < moves.size(); i++) {
+        for(int i = 0; i < size; i++) {
             string move_taken = "";
             double heur_val = maxi_heap.top().first;
             move_taken = maxi_heap.top().second;
@@ -842,7 +858,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     }
     else {
         priority_queue<pair<double,string>, vector<pair<double,string> >, Compare_min> mini_heap(values.begin(),values.end());   
-        for(int i = 0; i < moves.size(); i++) { 
+        for(int i = 0; i < size; i++) { 
             string move_taken = "";
             double heur_val = mini_heap.top().first;
             move_taken = mini_heap.top().second;
@@ -903,6 +919,7 @@ int main(){
             Board[i][j].captured = -1;
 
     string move;
+    int temp_size;
     int crush = 0;        
     bool on = true;
     if(player_id == 2)
@@ -913,10 +930,11 @@ int main(){
         string_to_move_cur(move,2,Board,crush);
         print_board(Board);
         // wait for other persons move
-        vector<string> poss=generate_all_moves(1,Board);
-        string_to_move_cur(poss[0],1,Board,crush);
-        cerr << poss[0]<<" "<<poss[1]<<" \n";
-        cout<<poss[0]<<endl;
+        //vector<string> poss=generate_all_moves(1,Board);
+        generate_all_moves(1,Board,temp_size);
+        string_to_move_cur(all_moves[0],1,Board,crush);
+        cerr << all_moves[0]<<" "<<all_moves[1]<<" \n";
+        cout<<all_moves[0]<<endl;
         end_time = clock();
         time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
         print_board(Board);
@@ -938,7 +956,8 @@ int main(){
                 cerr<<"You are the winner"<<endl;
             }
             cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<endl;
-            vector<string> poss=generate_all_moves(2,Board);
+            //vector<string> poss=;
+            generate_all_moves(2,Board,temp_size);
             string next_move="";
             double val;
             if(time_limit - time_player < 20 || count < 4)
@@ -946,13 +965,13 @@ int main(){
             else 
                 val=best_move(Board,LONG_MIN/2,LONG_MAX/2,5,next_move,false);
             cerr<<"Count is "<<count<<endl;
-            cerr<<"Finished Generating"<<poss.size()<<endl;
+            cerr<<"Finished Generating"<<temp_size<<endl;
             string_to_move_cur(next_move,2,Board,crush);
             cerr<<"Move played by opponent is "<<move<<endl;
             cout<<next_move<<endl;
             end_time = clock();
             time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
-            // print_board(Board);
+            print_board(Board);
             if(at_endstate(Board)!=0.0){
                 cerr<<"You are the winner"<<endl;
             }
@@ -962,9 +981,10 @@ int main(){
     }   
      else if(player_id == 1)
     {
-        vector<string> poss=generate_all_moves(2,Board);
-        string_to_move_cur(poss[0],2,Board,crush);
-        cout<<poss[0]<<endl;
+        //vector<string> poss=generate_all_moves(2,Board);
+        generate_all_moves(2,Board,temp_size);
+        string_to_move_cur(all_moves[0],2,Board,crush);
+        cout<<all_moves[0]<<endl;
         end_time = clock();
         time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
         crush=0;
