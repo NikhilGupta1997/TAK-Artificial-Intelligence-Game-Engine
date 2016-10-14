@@ -19,56 +19,58 @@ using namespace std;
 #define MAX_BOARD_SIZE 8;
 
 // Some cout variables
-int prune=0;
-int best_called=0;
+static int prune=0;
+static int best_called=0;
 
 // Evaluation function variables
-double capstone = 90;
-double flatstone = 75;
-double standing = 50;
-double cap_threat = 40;
-double stand_threat = 40; 
+static double capstone = 90;
+static double flatstone = 75;
+static double standing = 50;
+static double cap_threat = 40;
+static double stand_threat = 40; 
 
-double mapping[3];
-double diff[8];
-float infl[8][8];
-string all_moves[5000];
+static double mapping[3];
+static double diff[8];
+static float infl[8][8];
+static int neighbors[1000];
+static int temp_board[8][8];
+static string all_moves[5000];
 // Define some global arrays
-int player_id;
-int board_size;
+static int player_id;
+static int board_size;
 //get_heuristic variables
-double heuristic_value = 0.0;
-double captured = 0.0;
-double threats = 0.0;
-double piece_val = 0.0;
+static double heuristic_value = 0.0;
+static double captured = 0.0;
+static double threats = 0.0;
+static double piece_val = 0.0;
 
-float composition_value = 0.0;
-int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
-int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
-int capt_diff;
-float against_wall = 40, for_wall = 10;
-float capture_advantage = 0.0;
-float capture_disadvantage = 0.0;
-float wall_disadvantage = 0.0;
-float center_weight = 5;
-float center_value = 0.0;
+static float composition_value = 0.0;
+static int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
+static int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
+static int capt_diff;
+static float against_wall = 40, for_wall = 10;
+static float capture_advantage = 0.0;
+static float capture_disadvantage = 0.0;
+static float wall_disadvantage = 0.0;
+static float center_weight = 5;
+static float center_value = 0.0;
 
-clock_t func_begin_time;
-clock_t func_end_time;
+static clock_t func_begin_time;
+static clock_t func_end_time;
 
-float time_get_heuristic=0.0;
-float time_influence=0.0;
-float time_generate_moves=0.0;
-float time_execute_moves=0.0;
-float time_undo_moves=0.0;
-float time_end_states=0.0;
+static float time_get_heuristic=0.0;
+static float time_influence=0.0;
+static float time_generate_moves=0.0;
+static float time_execute_moves=0.0;
+static float time_undo_moves=0.0;
+static float time_end_states=0.0;
 
-int number_called_get_heuristic=0;
-int number_called_influence=0;
-int number_called_generate_moves=0;
-int number_called_execute_moves=0;
-int number_called_undo_moves=0;
-int number_called_end_states=0;
+// int number_called_get_heuristic=0;
+// int number_called_influence=0;
+// int number_called_generate_moves=0;
+// int number_called_execute_moves=0;
+// int number_called_undo_moves=0;
+static int number_called_end_states=0;
 
 struct Compare_min
 {
@@ -330,33 +332,36 @@ vector< vector<int> > partition(int stack_size) {
     return answer;   
 }
 
-stack<int> get_neighbors(int i, int j) {
-    stack<int> neighbors;
-    if(i != 0)
-        neighbors.push((i-1)*board_size + j);
-    if(j != 0)
-        neighbors.push(i*board_size + j-1);
-    if(i != board_size-1)
-        neighbors.push((i+1)*board_size + j);
-    if(j != board_size-1)
-        neighbors.push(i*board_size + j+1);
-    return neighbors;
+int get_neighbors(int i, int j, int index) {
+    int count = index;
+    if(i != 0){
+        neighbors[count] = ((i-1)*board_size + j);
+        count++;
+    }
+    if(j != 0){
+        neighbors[count] = (i*board_size + j-1);
+        count++;
+    }
+    if(i != board_size-1){
+        neighbors[count] = ((i+1)*board_size + j);
+        count++;
+    }
+    if(j != board_size-1){
+        neighbors[count] = (i*board_size + j+1);
+        count++;
+    }
+    return count;
 }
 
-    void extract_ij(int pos, int &i, int &j) {
-        i = pos / board_size;
-        j = pos % board_size;
-    }
 
-    int DFS(int i, int j, int myboard[8][8], string direction, int player_id, state gen_board[8][8]) {
+    int DFS(int i, int j, int myboard[8][8], string direction, int player_id, state gen_board[8][8], int neigh_index) {
         bool road = false;
-        stack<int> neighbors;
-        neighbors = get_neighbors(i, j);
+        int size = get_neighbors(i, j, neigh_index);
         int curr, curr_i, curr_j;
-        while(!neighbors.empty()) {
-            curr = neighbors.top();
-            neighbors.pop();
-            extract_ij(curr, curr_i, curr_j);
+        for(int i = neigh_index; i < size; i++) {
+            curr = neighbors[i];
+            curr_i = curr / board_size;
+            curr_j = curr % board_size;
             if(myboard[curr_i][curr_j] == 1)
                 continue;
             myboard[curr_i][curr_j] = 1;
@@ -364,12 +369,12 @@ stack<int> get_neighbors(int i, int j) {
                 if(direction == "horizontal") {
                     if(curr_j == board_size - 1)
                         return true;
-                    road = DFS(curr_i, curr_j, myboard, "horizontal", player_id, gen_board);
+                    road = DFS(curr_i, curr_j, myboard, "horizontal", player_id, gen_board, size);
                 }
                 else if(direction == "vertical")  {
                     if(curr_i == board_size - 1)
                         return true;
-                    road = DFS(curr_i, curr_j, myboard, "vertical", player_id, gen_board);
+                    road = DFS(curr_i, curr_j, myboard, "vertical", player_id, gen_board, size);
                 }
                 if(road)
                     return road;
@@ -421,14 +426,13 @@ stack<int> get_neighbors(int i, int j) {
     double at_endstate(state gen_board[8][8]) {
     	//return 0.0;
         bool road = false;
-        int temp_board[8][8];
         reset_visited(temp_board);
         
         for(int i = 0; i < board_size; i++) {
             int capt_i = gen_board[i][0].captured;
             if((capt_i == 0 || capt_i == 2) && (temp_board[i][0] == 0)) {
                 temp_board[i][0] = 1;
-                road = DFS(i, 0, temp_board, "horizontal", 0, gen_board);
+                road = DFS(i, 0, temp_board, "horizontal", 0, gen_board, 0);
                 if(road){
                     return 1.0;
                 }
@@ -440,7 +444,7 @@ stack<int> get_neighbors(int i, int j) {
             int capt_i = gen_board[i][0].captured;
             if((capt_i == 3 || capt_i == 5) && (temp_board[i][0] == 0)) {
                 temp_board[i][0] = 1;
-                road = DFS(i, 0, temp_board, "horizontal", 1, gen_board);
+                road = DFS(i, 0, temp_board, "horizontal", 1, gen_board, 0);
                 if(road){
                     return -1.0;
                 }
@@ -452,7 +456,7 @@ stack<int> get_neighbors(int i, int j) {
             int capt_j = gen_board[0][j].captured;
             if((capt_j == 0 || capt_j == 2) && (temp_board[0][j] == 0)) {
                 temp_board[0][j] = 1;
-                road = DFS(0, j, temp_board, "vertical", 0, gen_board);
+                road = DFS(0, j, temp_board, "vertical", 0, gen_board, 0);
                 if(road){
                     return 1.0;
                 }
@@ -464,7 +468,7 @@ stack<int> get_neighbors(int i, int j) {
             int capt_j = gen_board[0][j].captured;
             if((capt_j == 3 || capt_j == 5) && (temp_board[0][j] == 0)) {
                 temp_board[0][j] = 1;
-                road = DFS(0, j, temp_board, "vertical", 1, gen_board);
+                road = DFS(0, j, temp_board, "vertical", 1, gen_board, 0);
                 if(road){
                     return -1.0;
                 }
@@ -831,11 +835,12 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
     // Operations
     if(depth == 0){
-        number_called_get_heuristic++;
-        func_begin_time=clock();
+        // number_called_get_heuristic++;
+        // func_begin_time=clock();
         double value_heur= get_heuristic(myboard,false);
-        func_end_time=clock();
-        time_get_heuristic += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+        // func_end_time=clock();
+        // time_get_heuristic += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+        return value_heur;
     }
 
     if(minimum) {
@@ -849,26 +854,26 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     }
     int size=0;
     //moves = generate_all_moves(move_player, myboard);
-    number_called_generate_moves++ ;
-    func_begin_time = clock();   
+    // number_called_generate_moves++ ;
+    // func_begin_time = clock();   
     generate_all_moves(move_player,myboard,size);
-    func_end_time = clock();
-    time_generate_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+    // func_end_time = clock();
+    // time_generate_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
     for(int i = 0; i < size; i++) {
         int crushed = 0;
 
-        number_called_execute_moves++ ;
-    	func_begin_time = clock();   
+     //    number_called_execute_moves++ ;
+    	// func_begin_time = clock();   
         string_to_move_cur(all_moves[i], move_player, myboard, crushed);
-        func_end_time = clock();
-	    time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+     //    func_end_time = clock();
+	    // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
-	    number_called_end_states++ ;
-    	func_begin_time = clock();   
+	    // number_called_end_states++ ;
+    	// func_begin_time = clock();   
    	    ans = at_endstate(myboard);
-   	    func_end_time = clock();
-	    time_end_states += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+   	 //    func_end_time = clock();
+	    // time_end_states += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
 
         if(ans == 1.0)
@@ -876,11 +881,11 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
         else if(ans == -1.0)
             val = LONG_MIN;
         else if(ans == 0.0){
-            number_called_get_heuristic++;
-	        func_begin_time=clock();
+         //    number_called_get_heuristic++;
+	        // func_begin_time=clock();
 	        val= get_heuristic(myboard,false);
-	        func_end_time=clock();
-	        time_get_heuristic += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+	        // func_end_time=clock();
+	        // time_get_heuristic += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
         }
         else {
             cerr<<"Detected a flat ending"<<endl;   
@@ -888,11 +893,11 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
         }
         values.push_back(std::make_pair(val, all_moves[i]));
 
-        number_called_undo_moves++;
-	    func_begin_time=clock();
+     //    number_called_undo_moves++;
+	    // func_begin_time=clock();
         undo_move(all_moves[i], move_player, myboard, crushed);
-    	func_end_time = clock();
-	    time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+    	// func_end_time = clock();
+	    // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
 
     }
@@ -906,11 +911,11 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             maxi_heap.pop();
             int crushed = 0;
 
-		    number_called_execute_moves++ ;
-			func_begin_time = clock();   
+		 //    number_called_execute_moves++ ;
+			// func_begin_time = clock();   
 		    string_to_move_cur(move_taken, move_player, myboard, crushed);
-            func_end_time = clock();
-		    time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+      //       func_end_time = clock();
+		    // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
             string tmp = "";
             if(heur_val == LONG_MAX)
@@ -927,11 +932,11 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             if(child == min_val) 
                 best_move_chosen = move_taken; 
 
-            number_called_undo_moves++;
-		    func_begin_time=clock();
+      //       number_called_undo_moves++;
+		    // func_begin_time=clock();
             undo_move(move_taken, move_player, myboard, crushed);
-	    	func_end_time = clock();
-		    time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+	    	// func_end_time = clock();
+		    // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
        
             if(alpha > beta)  
                 return child;
@@ -947,11 +952,11 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             mini_heap.pop();
             int crushed = 0;
 
-            number_called_execute_moves++ ;
-			func_begin_time = clock();   
+   //          number_called_execute_moves++ ;
+			// func_begin_time = clock();   
 		    string_to_move_cur(move_taken, move_player, myboard, crushed);
-            func_end_time = clock();
-		    time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+      //       func_end_time = clock();
+		    // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
 		    string tmp = "";
             if(heur_val == LONG_MAX)
@@ -967,11 +972,11 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             if(child == max_val) 
                 best_move_chosen = move_taken;
 
-            number_called_undo_moves++;
-		    func_begin_time=clock();
+      //       number_called_undo_moves++;
+		    // func_begin_time=clock();
             undo_move(move_taken, move_player, myboard, crushed);
-            func_end_time = clock();
-		    time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+      //       func_end_time = clock();
+		    // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
        
             if(alpha > beta)   
                 return child;
@@ -985,40 +990,41 @@ void print_data(double total_time)
 
 	cerr<<"The data for the move is "<<endl;
 	cerr<<"The total time taken : "<< total_time<<endl;
-	cerr<<"Get heuristic Function"<<endl;
-	cerr<<"Times Called : "<<number_called_get_heuristic<<endl;
-	cerr<<"Total time taken : "<<time_get_heuristic<<endl;
-	cerr<<"Influence Function"<<endl;
-	cerr<<"Times Called : "<<number_called_influence<<endl;
-	cerr<<"Total time taken : "<<time_influence<<endl;
-	cerr<<"Generate Moves Function"<<endl;
-	cerr<<"Times Called : "<<number_called_generate_moves<<endl;
-	cerr<<"Total time taken : "<<time_generate_moves<<endl;
-	cerr<<"Execute Moves Function"<<endl;
-	cerr<<"Times Called : "<<number_called_execute_moves<<endl;
-	cerr<<"Total time taken : "<<time_execute_moves<<endl;
-	cerr<<"Undo Move Function"<<endl;
-	cerr<<"Times Called : "<<number_called_undo_moves<<endl;
-	cerr<<"Total time taken : "<<time_undo_moves<<endl;
-	cerr<<"End State Function"<<endl;
-	cerr<<"Times Called : "<<number_called_end_states<<endl;
-	cerr<<"Total time taken : "<<time_end_states<<endl;
+	// cerr<<"Get heuristic Function"<<endl;
+	// cerr<<"Times Called : "<<number_called_get_heuristic<<endl;
+	// cerr<<"Total time taken : "<<time_get_heuristic<<endl;
+	// cerr<<"Influence Function"<<endl;
+	// cerr<<"Times Called : "<<number_called_influence<<endl;
+	// cerr<<"Total time taken : "<<time_influence<<endl;
+	// cerr<<"Generate Moves Function"<<endl;
+	// cerr<<"Times Called : "<<number_called_generate_moves<<endl;
+	// cerr<<"Total time taken : "<<time_generate_moves<<endl;
+	// cerr<<"Execute Moves Function"<<endl;
+	// cerr<<"Times Called : "<<number_called_execute_moves<<endl;
+	// cerr<<"Total time taken : "<<time_execute_moves<<endl;
+	// cerr<<"Undo Move Function"<<endl;
+	// cerr<<"Times Called : "<<number_called_undo_moves<<endl;
+	// cerr<<"Total time taken : "<<time_undo_moves<<endl;
+	// cerr<<"End State Function"<<endl;
+	// cerr<<"Times Called : "<<number_called_end_states<<endl;
+	// cerr<<"Total time taken : "<<time_end_states<<endl;
+ //    cerr<<"Percentage : "<<(float)time_end_states/total_time*100<<endl;
 
 
 
- time_get_heuristic=0.0;
- time_influence=0.0;
- time_generate_moves=0.0;
- time_execute_moves=0.0;
- time_undo_moves=0.0;
- time_end_states=0.0;
+ // time_get_heuristic=0.0;
+ // time_influence=0.0;
+ // time_generate_moves=0.0;
+ // time_execute_moves=0.0;
+ // time_undo_moves=0.0;
+ // time_end_states=0.0;
 
- number_called_get_heuristic=0;
- number_called_influence=0;
- number_called_generate_moves=0;
- number_called_execute_moves=0;
- number_called_undo_moves=0;
- number_called_end_states=0;
+ // number_called_get_heuristic=0;
+ // number_called_influence=0;
+ // number_called_generate_moves=0;
+ // number_called_execute_moves=0;
+ // number_called_undo_moves=0;
+ // number_called_end_states=0;
 }
 
 int main(){
@@ -1063,7 +1069,7 @@ int main(){
         begin_time = clock();
         crush=0;
         string_to_move_cur(move,2,Board,crush);
-        print_board(Board);
+        // print_board(Board);
         // wait for other persons move
         //vector<string> poss=generate_all_moves(1,Board);
         generate_all_moves(1,Board,temp_size);
@@ -1072,7 +1078,7 @@ int main(){
         cout<<all_moves[0]<<endl;
         end_time = clock();
         time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
-        print_board(Board);
+        // print_board(Board);
         
         int count = 0;
 
@@ -1096,9 +1102,9 @@ int main(){
             string next_move="";
             double val;
             if(time_limit - time_player < 20 || count < 4)
-                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,5,next_move,false);
+                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,4,next_move,false);
             else 
-                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,6,next_move,false);
+                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,5,next_move,false);
 
             cerr<<"Count is "<<count<<endl;
             cerr<<"Finished Generating"<<temp_size<<endl;
@@ -1110,7 +1116,7 @@ int main(){
             time_of_move = float( end_time - begin_time ) /  CLOCKS_PER_SEC;
             time_player += time_of_move;
             print_data(time_of_move);
-            print_board(Board);
+            // print_board(Board);
             if(at_endstate(Board)!=0.0){
                 cerr<<"You are the winner"<<endl;
             }
