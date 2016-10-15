@@ -334,19 +334,19 @@ vector< vector<int> > partition(int stack_size) {
 
 int get_neighbors(int i, int j, int index) {
     int count = index;
-    if(i != 0){
+    if(i != 0 && temp_board[i-1][j] == 0){
         neighbors[count] = ((i-1)*board_size + j);
         count++;
     }
-    if(j != 0){
+    if(j != 0 && temp_board[i][j-1] == 0){
         neighbors[count] = (i*board_size + j-1);
         count++;
     }
-    if(i != board_size-1){
+    if(i != board_size-1 && temp_board[i+1][j] == 0){
         neighbors[count] = ((i+1)*board_size + j);
         count++;
     }
-    if(j != board_size-1){
+    if(j != board_size-1 && temp_board[i][j+1] == 0){
         neighbors[count] = (i*board_size + j+1);
         count++;
     }
@@ -354,7 +354,7 @@ int get_neighbors(int i, int j, int index) {
 }
 
 
-    int DFS(int i, int j, int myboard[8][8], string direction, int player_id, state gen_board[8][8], int neigh_index) {
+    int DFS(int i, int j, string direction, int player_id, state gen_board[8][8], int neigh_index) {
         bool road = false;
         int size = get_neighbors(i, j, neigh_index);
         int curr, curr_i, curr_j;
@@ -362,19 +362,19 @@ int get_neighbors(int i, int j, int index) {
             curr = neighbors[i];
             curr_i = curr / board_size;
             curr_j = curr % board_size;
-            if(myboard[curr_i][curr_j] == 1)
-                continue;
-            myboard[curr_i][curr_j] = 1;
+            // if(temp_board[curr_i][curr_j] == 1)
+            //     continue;
+            temp_board[curr_i][curr_j] = 1;
             if(gen_board[curr_i][curr_j].captured == (0 + player_id * 3) || gen_board[curr_i][curr_j].captured == (2 + player_id * 3)) {
                 if(direction == "horizontal") {
                     if(curr_j == board_size - 1)
                         return true;
-                    road = DFS(curr_i, curr_j, myboard, "horizontal", player_id, gen_board, size);
+                    road = DFS(curr_i, curr_j, "horizontal", player_id, gen_board, size);
                 }
                 else if(direction == "vertical")  {
                     if(curr_i == board_size - 1)
                         return true;
-                    road = DFS(curr_i, curr_j, myboard, "vertical", player_id, gen_board, size);
+                    road = DFS(curr_i, curr_j, "vertical", player_id, gen_board, size);
                 }
                 if(road)
                     return road;
@@ -396,15 +396,15 @@ int get_neighbors(int i, int j, int index) {
         int your_count = 0;
         int capt;
         bool flag = false;
-        int cur_player_count=cur_player.no_flat+cur_player.capstone;
-        int other_player_count=other_player.no_flat+other_player.capstone;
+        int cur_player_count = cur_player.no_flat+cur_player.capstone;
+        int other_player_count = other_player.no_flat+other_player.capstone;
         if(cur_player_count == 0 || other_player_count == 0)
             flag = true;
-        if(!flag){
+        while(true){
             for(int i = 0; i < board_size; i++){
                 for(int j =0; j < board_size; j++){
                     capt = gen_board[i][j].captured;
-                    if(capt == -1){
+                    if(capt == -1 && !flag){
                         return false;
                     }
                     else if(capt == 0 || capt == 2)
@@ -415,12 +415,10 @@ int get_neighbors(int i, int j, int index) {
             }
         }    
         if(my_count > your_count)
-            value = (my_count / (my_count + your_count));
+            value += (float)(my_count / (my_count + your_count));
         else if(my_count < your_count)
-            value = -1*(your_count / (my_count + your_count)); 
-        else
-            value = 0;
-            return true;
+            value -= (float)(your_count / (my_count + your_count)); 
+        return true;
     }
 
     double at_endstate(state gen_board[8][8]) {
@@ -432,7 +430,7 @@ int get_neighbors(int i, int j, int index) {
             int capt_i = gen_board[i][0].captured;
             if((capt_i == 0 || capt_i == 2) && (temp_board[i][0] == 0)) {
                 temp_board[i][0] = 1;
-                road = DFS(i, 0, temp_board, "horizontal", 0, gen_board, 0);
+                road = DFS(i, 0, "horizontal", 0, gen_board, 0);
                 if(road){
                     return 1.0;
                 }
@@ -444,7 +442,7 @@ int get_neighbors(int i, int j, int index) {
             int capt_i = gen_board[i][0].captured;
             if((capt_i == 3 || capt_i == 5) && (temp_board[i][0] == 0)) {
                 temp_board[i][0] = 1;
-                road = DFS(i, 0, temp_board, "horizontal", 1, gen_board, 0);
+                road = DFS(i, 0, "horizontal", 1, gen_board, 0);
                 if(road){
                     return -1.0;
                 }
@@ -456,7 +454,7 @@ int get_neighbors(int i, int j, int index) {
             int capt_j = gen_board[0][j].captured;
             if((capt_j == 0 || capt_j == 2) && (temp_board[0][j] == 0)) {
                 temp_board[0][j] = 1;
-                road = DFS(0, j, temp_board, "vertical", 0, gen_board, 0);
+                road = DFS(0, j, "vertical", 0, gen_board, 0);
                 if(road){
                     return 1.0;
                 }
@@ -468,7 +466,7 @@ int get_neighbors(int i, int j, int index) {
             int capt_j = gen_board[0][j].captured;
             if((capt_j == 3 || capt_j == 5) && (temp_board[0][j] == 0)) {
                 temp_board[0][j] = 1;
-                road = DFS(0, j, temp_board, "vertical", 1, gen_board, 0);
+                road = DFS(0, j, "vertical", 1, gen_board, 0);
                 if(road){
                     return -1.0;
                 }
@@ -618,7 +616,7 @@ int get_neighbors(int i, int j, int index) {
                     wall_disadvantage = (wall_capt_me*for_wall + wall_capt_you*against_wall - diff[-1*capt_diff]*(wall_capt_me + wall_capt_you));
                 else
                     wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*for_wall;
-                composition_value += capture_advantage - capture_disadvantage - 0.9*wall_disadvantage;
+                composition_value += capture_advantage - capture_disadvantage - 1*wall_disadvantage;
                 
                 // CENTER CONTROL
                 if(i < board_size)
@@ -641,8 +639,8 @@ int get_neighbors(int i, int j, int index) {
         // INFLUENCE
             double infl_value = 0;
             float flat = 3;
-            float wall = 3.1;
-            float cap = 3.3;
+            float wall = 2.98;
+            float cap = 2.99;
             influence(infl, gen_board, flat, wall, cap);
             for(int i = 0; i < board_size; i++){
                 for(int j = 0; j < board_size; j++){
@@ -653,7 +651,50 @@ int get_neighbors(int i, int j, int index) {
                 }
             }
 
-        heuristic_value = 1.1*captured + 1.5*composition_value + piece_val + 0.95*infl_value + center_value;   
+        // SIZE OF STACK HEURISTIC
+            double stack_size_value = 0;
+            float size_val = 1;
+            float power_size = 2.0;
+            for(int i = 0; i < board_size; i++){
+                for(int j = 0; j < board_size; j++){
+                    int size_stack = gen_board[i][j].state_stack.size();
+                    if(size_stack > 1){
+                        if(gen_board[i][j].captured >= 3)
+                            stack_size_value -= pow(size_stack, power_size)*size_val;
+                        else
+                            stack_size_value += pow(size_stack, power_size)*size_val;
+                    }
+                }
+            }
+  
+        // COMPOSITION OF STACK HEURISTIC
+            double stack_composition_value = 0;
+            float comp_val = 1;
+            float comp_power = 2.0;
+            for(int i = 0; i < board_size; i++){
+                for(int j = 0; j < board_size; j++){
+                    int size = gen_board[i][j].state_stack.size();
+                    if(size > 1){
+                        stack<int> temp(gen_board[i][j].state_stack);
+                        int count_me = 0;
+                        for(int k = 0; k < size; k++){
+                            if(temp.top() < 3)
+                                count_me++;
+                            temp.pop();
+                        }
+                        if(count_me/size > 0.5)
+                            stack_composition_value += (count_me)*(1 - count_me/size)*pow(comp_val, comp_power)*size;
+                        else if (count_me/size < 0.5)
+                            stack_composition_value -= (count_me)*(1 - count_me/size)*pow(comp_val, comp_power)*size;
+                        else if(gen_board[i][j].captured >= 3)
+                            stack_composition_value -= size*size;
+                        else
+                            stack_composition_value += size*size;
+                    }
+                }
+            }
+
+        heuristic_value = 1.1*captured + 1.5*composition_value + piece_val + 0.95*infl_value + center_value + 0.1*stack_size_value + 0.1*stack_composition_value;   
         return heuristic_value;
     }
 
@@ -869,7 +910,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
      //    func_end_time = clock();
 	    // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
-	    // number_called_end_states++ ;
+	    // number_called_end_states++;
     	// func_begin_time = clock();   
    	    ans = at_endstate(myboard);
    	 //    func_end_time = clock();
@@ -1008,7 +1049,7 @@ void print_data(double total_time)
 	// cerr<<"End State Function"<<endl;
 	// cerr<<"Times Called : "<<number_called_end_states<<endl;
 	// cerr<<"Total time taken : "<<time_end_states<<endl;
- //    cerr<<"Percentage : "<<(float)time_end_states/total_time*100<<endl;
+    // cerr<<"Percentage : "<<(float)time_end_states/total_time*100<<endl;
 
 
 
@@ -1091,7 +1132,7 @@ int main(){
             crush=0;
             string_to_move_cur(move,1,Board,crush);
             crush=0;
-            // print_board(Board);
+            print_board(Board);
             cerr<<endl;
             if(at_endstate(Board)!=0.0){
                 cerr<<"You are the winner"<<endl;
@@ -1116,7 +1157,7 @@ int main(){
             time_of_move = float( end_time - begin_time ) /  CLOCKS_PER_SEC;
             time_player += time_of_move;
             print_data(time_of_move);
-            // print_board(Board);
+            print_board(Board);
             if(at_endstate(Board)!=0.0){
                 cerr<<"You are the winner"<<endl;
             }
