@@ -13,14 +13,16 @@
 #include <limits.h>
 #include <time.h>
 #include <queue>
-
+#include <string>
 using namespace std;
 
-#define MAX_BOARD_SIZE 8;
+#define MAX_BOARD_SIZE 8 
+#define Hash_size 124000000 
+static int max_height = 60;
 
 // Some cout variables
 static int prune=0;
-static int best_called=0;
+int best_called=0;
 
 // Evaluation function variables
 static double capstone = 90;
@@ -79,6 +81,26 @@ static int right1=0;
 
 static float myval;
 
+int repeated=0;
+
+static uint64_t zobrist_table[300000][6];
+uint64_t global_hash=0;
+//float 
+class storage
+{
+    public:
+    float value;
+    string best_move;
+    int depth;
+    storage( string b , float v, int depth)
+    {
+        value = v ;
+        b = best_move ;
+        this->depth = depth ; 
+    }
+};
+unordered_map< uint64_t, storage > Transposition_Table(Hash_size);
+
 struct Compare_min {
     bool operator()(pair<double,string> p1,pair<double,string> p2) {
         return p1.first<p2.first;
@@ -91,23 +113,97 @@ struct Compare_max {
     }
 };
 
-class state {
+class state{
   public:   
     stack<int> state_stack;
     int captured;
-    
     // Constructor
-    state() {   
+    state(){    
        captured=-1;
     }
-    void assign(state Board) {
+    void assign(state Board)
+    {
         stack<int> temp(Board.state_stack);
         swap(this->state_stack,temp);
         this->captured=Board.captured;
-        
+    }
+    bool check_equal (state &other) 
+    {
+        if(captured!=other.captured)
+            return false;
+        if(state_stack.size()!=other.state_stack.size())
+            return false;
+        stack<int> temp(other.state_stack);
+        stack<int> temp_curr(this->state_stack);
+        int a1,a2;
+        while(temp.size()!=0)
+        {
+            a1 = temp.top();
+            a2 = temp_curr.top();
+            if(a1!=a2)
+                return false;
+            temp.pop();
+            temp_curr.pop();
+        }
+        return true;
     }
 };
 
+/*class State_Board
+{
+public: 
+    state Board[8][8];
+    int hash;
+    State_Board()
+    {   
+        hash = 0;
+        int pos;
+        for(int i=0; i<board_size; i++)
+            for(int j=0; j<board_size; j++)
+            {   pos = (i*board_size+j)*max_height ; 
+                for(int h=0 ; h<max_height ; h++)
+                {   
+                    hash = hash xor zobrist_table[pos+h][0];    
+                }
+                
+            }
+    }
+    bool operator==(State_Board &other) 
+    {
+        for(int i=0;i<board_size;i++)
+            for(int j=0;j<board_size;j++)
+            {
+                if(!Board[i][j].check_equal(other.Board[i][j]))
+                    return false;
+            }
+        return false;    
+    }
+
+};
+
+*/
+void init_zobrist()
+{
+    int n_square = board_size*board_size;
+    // table[k] implies (i,j,t) if k=(i*board_size+j)*max_height+ t
+    for(int i=0;i<board_size;i++)
+    {
+        for(int j=0;j<board_size;j++)
+        {
+            int k1 = (i*board_size+j)*max_height;
+            for(int t=0 ; t<max_height ;t++)
+            {
+                for(int piece=0;piece<6;piece++)
+                {
+                    zobrist_table[k1+t][piece]= rand() % 200000000 ;
+                   // cerr<<zobrist_table[k1+t][piece]<<endl;
+                }
+            }
+        }
+    }
+}
+//unordered_map<int,double> tt;
+//unorderd_map<state[8][8],double,state_hash> Transposition_Table;
 class Player {
   public:
     // to store no of pieces remaining
@@ -131,7 +227,7 @@ class Player {
     }
 } cur_player, other_player;
 
-void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed) { // executes a valid move on the game board
+void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed,bool hash) { // executes a valid move on the Board
     int j = (int)(move[1]) - 96;    // stores movement across a,b,...
     int i = (int)(move[2]) - 48;    // stores from 1,2..
     if(!isdigit(move[0])) {
@@ -142,6 +238,12 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed) 
         else if(move[0]=='C') x = 2;
         if(id != player_id) 
             x = x+3;    // Maps the pices to those of the opponent (3,4,5)
+        // table entry would be ((i-1)*board_size+(j-1))*max_height
+        if(hash) // placing the piece
+        {
+            int entry = ((i-1)*board_size+(j-1))*max_height;
+            global_hash= global_hash xor zobrist_table[entry][x];
+        }
         myBoard[i-1][j-1].captured = x;
         myBoard[i-1][j-1].state_stack.push(x);
         if(move[0] == 'F' || move[0] == 'S') {
@@ -161,9 +263,16 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed) 
         int no_picked = (int) move[0],top;
         no_picked -= 48;
         stack<int> picked;
+        int entry = ((i-1)*board_size+(j-1))*max_height;
+        int s =  myBoard[i-1][j-1].state_stack.size();
         for(int l = 0; l < no_picked; l++) {
             top = myBoard[i-1][j-1].state_stack.top();
+            if(hash)
+            {
+                global_hash = global_hash xor zobrist_table[entry+s][top];
+            }    
             myBoard[i-1][j-1].state_stack.pop();
+            s--;
             picked.push(top);
         }
         if(myBoard[i-1][j-1].state_stack.size() != 0)
@@ -195,25 +304,38 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed) 
             mj = -1;
         }
         int w1,w2;  
-        for(int k = 1; k <= drop.size(); k++) {
+        for(int k = 1; k <= drop.size(); k++) { // Dropping the stack
             w1 = i-1+k*mi;
             w2 = j-1+k*mj;
             stack<int> tempo(myBoard[w1][w2].state_stack);
+            int s1 = tempo.size();
             int cap = myBoard[w1][w2].captured;
             int x1 = 1;
             int top1, t1;
             t1 = myBoard[w1][w2].captured; 
+            int entry1= (w1*board_size+w2)*max_height ;
             while(x1 <= drop[k-1]) {
                 top1 = picked.top();
                 picked.pop();
-                if(drop[k-1] == 1 && t1 % 3 == 1) {
+                if(drop[k-1] == 1 && t1 % 3 == 1) {// placing on wall .. must be a cap
                     int xw = tempo.top();
                     tempo.pop();
                     tempo.push(xw-1);
+                    //s1++;
+                    if(hash)
+                    {
+                        global_hash = global_hash xor zobrist_table[entry1+s1][xw] ;  // xor with earlier val
+                        global_hash = global_hash xor zobrist_table[entry1+s1][xw-1] ; // xor with new position
+                    }    
                     crushed=1;      
                 }   
                 t1 = top1;
                 tempo.push(top1);
+                s1++;
+                if(hash)
+                {
+                    global_hash = global_hash xor zobrist_table[entry1+s1][t1] ;
+                }                
                 x1++;
             }
             myBoard[w1][w2].captured = top1;
@@ -222,13 +344,18 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed) 
     }
 }
 
-void undo_move(string move,int id,state gen_Board[8][8],int crushed) {
+void undo_move(string move,int id,state gen_Board[8][8],int crushed,bool hash) {
     int j = (int)(move[1]) - 96;    // stores movement across a,b,...
     int i = (int)(move[2]) - 48;    // stores from 1,2..
     // if first position is integer then its a Move move else a place
     if(!isdigit(move[0])){
-        int x;
+        int x = gen_Board[i-1][j-1].state_stack.top() ;
         gen_Board[i-1][j-1].captured = -1;
+        if(hash)
+        {
+            int entry = ((i-1)*board_size+(j-1))*max_height;
+            global_hash= global_hash xor zobrist_table[entry][x];
+        }
         gen_Board[i-1][j-1].state_stack.pop();
         if(move[0] == 'F' || move[0] == 'S') {
             if(id == player_id) 
@@ -249,7 +376,7 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed) {
         int drops = move.length()-4;
         int dropped[8];
         char dir = move[3];
-        for(int l = 4; l < move.length(); l++) {
+        for(int l = 4; l < move.length(); l++) { // storing the quantity dropped in successive order
             char m_ch = move[l];
             int i1 = (int)m_ch -48;
             dropped[l-4] = i1;
@@ -266,21 +393,37 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed) {
             {mi = 0; mj = -1;}
         stack<int> reverse_drop;
         int pick_up,w1,w2 ;
-        for(int k=drops;k>0;k--) {
+        for(int k=drops;k>0;k--) {// picking the pieces 
             w1 = i-1+k*mi;
             w2 = j-1+k*mj;
             pick_up = dropped[k-1];
+            int entry2= (w1*board_size+w2)*max_height;
+            int x2;
+            int s2=gen_Board[w1][w2].state_stack.size();                    
             int captured = gen_Board[w1][w2].captured;
-            if(k == drops && gen_Board[w1][w2].state_stack.size() >= 2 && pick_up == 1 && captured % 3 == 2) {
+            if(k == drops && gen_Board[w1][w2].state_stack.size() >= 2 && pick_up == 1 && captured % 3 == 2) {// if capstone was picked up
+
                     reverse_drop.push(captured);
+                    x2=gen_Board[w1][w2].state_stack.top();
+                    if(hash)
+                    {
+                        global_hash = global_hash xor zobrist_table[entry2+s2][x2];
+                    }    
                     gen_Board[w1][w2].state_stack.pop();
+                    s2--;
                     captured = gen_Board[w1][w2].state_stack.top();
+                    
                     if(captured % 3 == 0 && crushed == 1) {
                         int wx = captured;
                         gen_Board[w1][w2].state_stack.pop();
                         wx++;
                         gen_Board[w1][w2].state_stack.push(wx);
                         gen_Board[w1][w2].captured = wx;
+                        if(hash)
+                       {
+                            global_hash = global_hash xor zobrist_table[entry2+s2][wx-1];
+                            global_hash = global_hash xor zobrist_table[entry2+s2][wx];
+                        }
                     }
                     else {
                         gen_Board[w1][w2].captured = captured;
@@ -290,7 +433,13 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed) {
                 int x1 = 1;
                 while(x1 <= pick_up) {   
                     reverse_drop.push(gen_Board[w1][w2].state_stack.top());
-                    gen_Board[w1][w2].state_stack.pop();
+                    x2 = gen_Board[w1][w2].state_stack.top();
+                    if(hash)
+                    {
+                        global_hash = global_hash xor zobrist_table[entry2+s2][x2];
+                    }
+                    gen_Board[w1][w2].state_stack.pop();    
+                    s2--;
                     x1++;
                 }
                 if(gen_Board[w1][w2].state_stack.size() == 0)
@@ -299,10 +448,18 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed) {
                     gen_Board[w1][w2].captured = gen_Board[w1][w2].state_stack.top();
             }
         }
+        //Lets drop them back
+        int entry1 = ((i-1)*board_size+(j-1))*max_height; 
+        int  s3 = gen_Board[i-1][j-1].state_stack.size();
         while(reverse_drop.size() != 0) {
             int picking = reverse_drop.top();
             reverse_drop.pop();
             gen_Board[i-1][j-1].state_stack.push(picking);
+            s3++;
+            if(hash)
+            {
+                global_hash= global_hash xor zobrist_table[entry1+s3][picking];
+            }    
         }
         gen_Board[i-1][j-1].captured = gen_Board[i-1][j-1].state_stack.top();      
     }
@@ -608,7 +765,7 @@ double get_heuristic(state gen_board[8][8], bool debug){
          composition_value = 0.0;
         // int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
         // int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
-        // int capt_diff;
+        // int cddddapt_diff;
         // float against_wall = 40, for_wall = 10;
         // capture_advantage = 0.0;
         // capture_disadvantage = 0.0;
@@ -889,10 +1046,26 @@ void generate_all_moves(int id, state gen_board[8][8],int &size){
 double best_move(state myboard[8][8],double alpha,double beta,int depth,string &best_move_chosen,bool minimum){
     // Declare Variables
     //vector<string> moves;
+    if(depth>=3)
+    best_called++;
     int move_player;
     vector<pair<double,string> > values;
     double min_val = LONG_MAX, max_val = LONG_MIN, child, ans, val;
+    // check if state already checkedif (umap.find(key) == umap.end())
+    if(Transposition_Table.find(global_hash) != Transposition_Table.end() )
+    {
+        storage temp = Transposition_Table.find(global_hash)->second;
+        if(temp.depth>=depth)
+        {
+           if(depth>=3) repeated++;
+        // storage ans = Transposition_Table[global_hash] ;
+            best_move_chosen= temp.best_move;
+        // return ans.value;
 
+            return temp.value;
+        //cerr<<"Found a repeated state"<<endl;
+        }
+    }    
     // Operations
     if(depth == 0){
         // number_called_get_heuristic++;
@@ -925,7 +1098,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
      //    number_called_execute_moves++ ;
     	// func_begin_time = clock();   
-        string_to_move_cur(all_moves[i], move_player, myboard, crushed);
+        string_to_move_cur(all_moves[i], move_player, myboard, crushed,false);
      //    func_end_time = clock();
 	    // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
@@ -955,7 +1128,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
      //    number_called_undo_moves++;
 	    // func_begin_time=clock();
-        undo_move(all_moves[i], move_player, myboard, crushed);
+        undo_move(all_moves[i], move_player, myboard, crushed,false);
     	// func_end_time = clock();
 	    // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
@@ -973,7 +1146,9 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
 		 //    number_called_execute_moves++ ;
 			// func_begin_time = clock();   
-		    string_to_move_cur(move_taken, move_player, myboard, crushed);
+         //   cerr<<"Hash is "<<global_hash<<endl;
+            uint64_t a1= global_hash;
+		    string_to_move_cur(move_taken, move_player, myboard, crushed,true);
       //       func_end_time = clock();
 		    // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
@@ -994,16 +1169,23 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
       //       number_called_undo_moves++;
 		    // func_begin_time=clock();
-            undo_move(move_taken, move_player, myboard, crushed);
-	    	// func_end_time = clock();
+           // cerr<<"Hash before is "<<global_hash<<" , "<<a1<<" Move== " <<move_taken<<endl;
+            undo_move(move_taken, move_player, myboard, crushed,true);
+           // cerr<<"Hash after is "<<global_hash<<" , "<<a1<<" Move== " <<move_taken<<endl;
+           // assert(global_hash==a1);
+            // func_end_time = clock();
 		    // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
        
             if(alpha > beta){
             	// if(depth!=1)
              // 	cerr<<"Pruned at "<<i<<" at depth "<<depth<<endl;
+                storage temp(best_move_chosen,child,depth);
+                Transposition_Table.insert(std::make_pair(global_hash,temp));
                 return child;
             }    
         }
+        storage temp(best_move_chosen,min_val,depth);
+        Transposition_Table.insert(std::make_pair(global_hash,temp));
         return min_val;
     }
     else {
@@ -1017,7 +1199,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
    //          number_called_execute_moves++ ;
 			// func_begin_time = clock();   
-		    string_to_move_cur(move_taken, move_player, myboard, crushed);
+		    string_to_move_cur(move_taken, move_player, myboard, crushed,true);
       //       func_end_time = clock();
 		    // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
@@ -1037,16 +1219,20 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
       //       number_called_undo_moves++;
 		    // func_begin_time=clock();
-            undo_move(move_taken, move_player, myboard, crushed);
+            undo_move(move_taken, move_player, myboard, crushed,true);
       //       func_end_time = clock();
 		    // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
        
            if(alpha > beta){
            		//if(depth!=1)
              	//cerr<<"Pruned at "<<i<<" at depth "<<depth<<endl;
+                storage temp(best_move_chosen,child,depth);
+                Transposition_Table.insert(std::make_pair(global_hash,temp));
                 return child;
-            } 
+            }    
         }
+        storage temp(best_move_chosen,max_val,depth);
+        Transposition_Table.insert(std::make_pair(global_hash,temp));
         return max_val;
     }
 } 
@@ -1091,7 +1277,6 @@ void print_data(double total_time)
  // number_called_undo_moves=0;
  // number_called_end_states=0;
 }
-
 int main(int argc, char** argv){
     diff[0]=0;
     diff[1]=25+10;
@@ -1104,8 +1289,9 @@ int main(int argc, char** argv){
     mapping[0]=flatstone;
     mapping[1]=standing;
     mapping[2]=capstone;
-
-    myval = stof(argv[1]);
+    
+   // myval = stof(argv[1]);
+    myval= 1.5;
     cerr<<"myvalue is "<<myval<<endl;
     srand(time(NULL));
     // Clock variables
@@ -1122,6 +1308,8 @@ int main(int argc, char** argv){
     begin_time = clock();
 
     board_size = n;
+    //State_Board Game(30);
+    init_zobrist();
     cur_player.assign(board_size);
     other_player.assign(board_size);
     for(int i = 0; i < board_size; i++)
@@ -1137,7 +1325,7 @@ int main(int argc, char** argv){
         cin>>move;
         begin_time = clock();
         crush=0;
-        string_to_move_cur(move,2,Board,crush);
+        string_to_move_cur(move,2,Board,crush,false);
         // print_board(Board);
         // wait for other persons move
         //vector<string> poss=generate_all_moves(1,Board);
@@ -1145,8 +1333,8 @@ int main(int argc, char** argv){
         int randmove = rand()%temp_size;
         while(all_moves[randmove][0] != 'F')
             randmove = rand()%temp_size;
-        cerr << all_moves[randmove]<<" \n";
-        string_to_move_cur(all_moves[randmove],1,Board,crush);
+        //cerr << all_moves[randmove]<<" \n";
+        string_to_move_cur(all_moves[randmove],1,Board,crush,false);
         cout<<all_moves[randmove]<<endl;
         end_time = clock();
         time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
@@ -1161,7 +1349,7 @@ int main(int argc, char** argv){
             cin>>move;
             begin_time = clock();
             crush=0;
-            string_to_move_cur(move,1,Board,crush);
+            string_to_move_cur(move,1,Board,crush,false);
             crush=0;
             // print_board(Board);
             cerr<<endl;
@@ -1175,14 +1363,17 @@ int main(int argc, char** argv){
             generate_all_moves(2,Board,temp_size);
             string next_move="";
             double val;
-            if(time_limit - time_player < 20 || count < 7)
-                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,4,next_move,false);
+            if(time_limit - time_player < 20 || count < 3)
+                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,5,next_move,false);
             else 
-                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,4,next_move,false);
-
+                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,6,next_move,false);
+            cerr<<"Repeated "<<repeated<<" out of "<<best_called<<endl;
+            repeated=0;
+            best_called = 0 ;
+            Transposition_Table.clear();
             cerr<<"Count is "<<count<<endl;
             // cerr<<"Finished Generating"<<temp_size<<endl;
-            string_to_move_cur(next_move,2,Board,crush);
+            string_to_move_cur(next_move,2,Board,crush,false);
             // cerr<<"Move played by opponent is "<<move<<endl;
             cout<<next_move<<endl;
             end_time = clock();
@@ -1190,7 +1381,7 @@ int main(int argc, char** argv){
             time_of_move = float( end_time - begin_time ) /  CLOCKS_PER_SEC;
             time_player += time_of_move;
             print_data(time_of_move);
-            // print_board(Board);
+            print_board(Board);
             endstate_val = at_endstate(Board,debug);
             if(endstate_val > 0.0)
                 cerr<<"You are the winner"<<endl;
@@ -1208,7 +1399,7 @@ int main(int argc, char** argv){
         while(all_moves[randmove][0] != 'F')
             randmove = rand()%temp_size;
         cerr<<all_moves[randmove]<<" \n";
-        string_to_move_cur(all_moves[randmove],2,Board,crush);
+        string_to_move_cur(all_moves[randmove],2,Board,crush,false);
         cout<<all_moves[randmove]<<endl;
         end_time = clock();
         time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
@@ -1216,7 +1407,7 @@ int main(int argc, char** argv){
         cerr<<endl;
         cin>>move;
         begin_time = clock();
-        string_to_move_cur(move,1,Board,crush);
+        string_to_move_cur(move,1,Board,crush,false);
         int count=0;
         while(on) {
             // cerr<<"Time left = "<< time_limit - time_player<<endl; 
@@ -1236,24 +1427,36 @@ int main(int argc, char** argv){
             time_of_move = float( end_time - begin_time ) /  CLOCKS_PER_SEC;
             time_player += time_of_move;
             print_data(time_of_move);
-            string_to_move_cur(next_move,1,Board,crush);
+            string_to_move_cur(next_move,1,Board,crush,false);
             // print_board(Board);
             endstate_val = at_endstate(Board,debug);
             if(endstate_val > 0.0)
-                cerr<<"You are the winner"<<endl;
+            {  
+              cerr<<"You are the winner"<<endl;
+              return 0;
+            }
             else if(endstate_val < 0.0)
-                cerr<<"You are the loser"<<endl;
+            {
+                 cerr<<"You are the loser"<<endl;
+                 return 0;
+            }   
             // cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<endl;  
             cin>>move;
             begin_time = clock();
             // cerr<<"Move played by opponent is "<<move<<endl;
-            string_to_move_cur(move,2,Board,crush);
+            string_to_move_cur(move,2,Board,crush,false);
             // print_board(Board);
             endstate_val = at_endstate(Board,debug);
             if(endstate_val > 0.0)
-                cerr<<"You are the winner"<<endl;
+            {  
+              cerr<<"You are the winner"<<endl;
+              return 0;
+            }
             else if(endstate_val < 0.0)
+            {
                 cerr<<"You are the loser"<<endl;
+                return 0;
+            }
             // cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<","<<val<<endl;
                     
         }
