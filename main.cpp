@@ -13,7 +13,8 @@
 #include <limits.h>
 #include <time.h>
 #include <queue>
-#include <string>
+#include <fstream>
+
 using namespace std;
 
 #define MAX_BOARD_SIZE 8 
@@ -37,9 +38,12 @@ static float infl[8][8];
 static int neighbors[1000];
 static int temp_board[8][8];
 static string all_moves[5000];
+
 // Define some global arrays
 static int player_id;
 static int board_size;
+static int current_player;
+
 //get_heuristic variables
 static double heuristic_value = 0.0;
 static double captured = 0.0;
@@ -515,7 +519,7 @@ int get_neighbors(int i, int j, int index) {
     
 
 int DFS(int i, int j, int myboard[8][8],  int player_id, state gen_board[8][8], int neigh_index) {
-	bool road = false;
+    bool road = false;
     int size = get_neighbors(i, j, neigh_index);
     int curr, curr_i, curr_j;
     for(int i = neigh_index; i < size; i++) {
@@ -531,12 +535,12 @@ int DFS(int i, int j, int myboard[8][8],  int player_id, state gen_board[8][8], 
             if(curr_j==0) left1=1;
             if(curr_j==board_size-1) right1=1;            
             if(top1==1 && bottom1==1)
-            	return true;
-        	if(left1==1 && right1==1)
-        		return true;	
+                return true;
+            if(left1==1 && right1==1)
+                return true;    
             road = DFS(curr_i, curr_j, myboard, player_id, gen_board, size);
             if(road)
-            	return road;
+                return road;
         }
     }
     return road;
@@ -581,14 +585,14 @@ bool flat_win(state gen_board[8][8], float &value) {
 }
 
 void initialise() {
-	top1 = 0;
-	left1 = 0;
-	bottom1 = 0;
-	right1 = 0;
+    top1 = 0;
+    left1 = 0;
+    bottom1 = 0;
+    right1 = 0;
 }
 
 double at_endstate(state gen_board[8][8],int debug) {
-	//return 0.0;
+    //return 0.0;
     bool road = false;
     reset_visited(temp_board);
     //cout<<"Checking End state"<<endl;
@@ -601,7 +605,7 @@ double at_endstate(state gen_board[8][8],int debug) {
             road = DFS(i, 0, temp_board, 0, gen_board, 0);
             initialise();
             if(road){
-                return 1.0;
+                return 10.0;
             }
         }
     }
@@ -613,7 +617,7 @@ double at_endstate(state gen_board[8][8],int debug) {
             road = DFS(0, j, temp_board,  0, gen_board, 0);
             initialise();
             if(road){
-                return 1.0;
+                return 10.0;
             }
         }
     }
@@ -628,7 +632,7 @@ double at_endstate(state gen_board[8][8],int debug) {
             road = DFS(i, 0, temp_board, 1, gen_board, 0);
             initialise();
             if(road){
-                return -1.0;
+                return -10.0;
             }
         } 
     }
@@ -644,7 +648,7 @@ double at_endstate(state gen_board[8][8],int debug) {
             initialise();
 
             if(road){
-                return -1.0;
+                return -10.0;
             }
         }    
     }
@@ -662,7 +666,7 @@ void print_board(state Board[8][8]) {
         for(int j = 0; j < board_size; j++) {
             stack<int> temp(Board[i][j].state_stack);
             if(temp.size() == 0) {
-                cerr<<"-1"<<"\t\t";
+                cerr<<"-1";
                 continue;
             }  
             while(temp.size()!=0) {
@@ -670,9 +674,9 @@ void print_board(state Board[8][8]) {
                 temp.pop();
                 cerr<<x<<":";
             }
-            cerr<<"\t\t";
+            cerr<<" ";
         }
-        cerr<<endl<<endl;
+        cerr<<endl;
     }
 }
 
@@ -791,7 +795,7 @@ double get_heuristic(state gen_board[8][8], bool debug){
                 wall_disadvantage = (wall_capt_me*for_wall + wall_capt_you*against_wall - diff[-1*capt_diff]*(wall_capt_me + wall_capt_you));
             else
                 wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*for_wall;
-            composition_value += capture_advantage - capture_disadvantage - 0.9*wall_disadvantage;
+            composition_value += capture_advantage - capture_disadvantage - myval*wall_disadvantage;
             
             // CENTER CONTROL
             if(i < board_size)
@@ -836,9 +840,9 @@ double get_heuristic(state gen_board[8][8], bool debug){
     //             int size_stack = gen_board[i][j].state_stack.size();
     //             if(size_stack > 1){
     //                 if(gen_board[i][j].captured >= 3)
-    //                     stack_size_value -= pow(size_stack, power_size)*size_val;
+    //                     stack_size_value -= size_stack*size_stack*size_val;
     //                 else
-    //                     stack_size_value += pow(size_stack, power_size)*size_val;
+    //                     stack_size_value += size_stack*size_stack*size_val;
     //             }
     //         }
     //     }
@@ -859,9 +863,9 @@ double get_heuristic(state gen_board[8][8], bool debug){
     //                     temp.pop();
     //                 }
     //                 if(count_me/size > 0.5)
-    //                     stack_composition_value += (count_me)*(1 - count_me/size)*pow(comp_val, comp_power)*size;
+    //                     stack_composition_value += (count_me)*(1 - count_me/size)*comp_val*comp_val*size;
     //                 else if (count_me/size < 0.5)
-    //                     stack_composition_value -= (count_me)*(1 - count_me/size)*pow(comp_val, comp_power)*size;
+    //                     stack_composition_value -= (count_me)*(1 - count_me/size)*comp_val*comp_val*size;
     //                 else if(gen_board[i][j].captured >= 3)
     //                     stack_composition_value -= size*size;
     //                 else
@@ -870,7 +874,14 @@ double get_heuristic(state gen_board[8][8], bool debug){
     //         }
     //     }
 
-    heuristic_value = myval*captured + 1.5*composition_value + piece_val + 0.95*infl_value + center_value;// + 0.1*stack_size_value + 0.1*stack_composition_value;   
+    // MOVE ADVANTAGE
+        double move_advantage = 0.0;
+        if(current_player == -1)
+            move_advantage -= 250;
+        else if(current_player == 1)
+            move_advantage += 250;
+
+    heuristic_value = move_advantage + 1.15*captured + 1.5*composition_value + piece_val + 0.95*infl_value + center_value;//*stack_size_value;// + 0.1*stack_composition_value;   
     return heuristic_value;
 }
 
@@ -948,7 +959,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size){
                             if(valid)
                             {
                                // all_moves.push_back(move);
-                             	all_moves[size]=move; size++;
+                                all_moves[size]=move; size++;
                             }
                         }
                         if(part_size<=dist_down){
@@ -1003,7 +1014,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size){
                                     }
                             if(valid)
                             {
-                            	all_moves[size]=move; size++;
+                                all_moves[size]=move; size++;
                                 //all_moves.push_back(move);
                             }
                         }
@@ -1043,7 +1054,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size){
    // return all_moves;
 }
 
-double best_move(state myboard[8][8],double alpha,double beta,int depth,string &best_move_chosen,bool minimum){
+double best_move(state myboard[8][8],double alpha,double beta,int depth,string &best_move_chosen,bool minimum) {
     // Declare Variables
     //vector<string> moves;
     if(depth>=3)
@@ -1051,6 +1062,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     int move_player;
     vector<pair<double,string> > values;
     double min_val = LONG_MAX, max_val = LONG_MIN, child, ans, val;
+
     // check if state already checkedif (umap.find(key) == umap.end())
     if(Transposition_Table.find(global_hash) != Transposition_Table.end() )
     {
@@ -1066,6 +1078,14 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
         //cerr<<"Found a repeated state"<<endl;
         }
     }    
+
+    if(!minimum && player_id == 1)
+        current_player = -1;
+    else if (minimum && player_id == 2)
+        current_player = 1;
+    else
+        current_player = 0;
+
     // Operations
     if(depth == 0){
         // number_called_get_heuristic++;
@@ -1085,6 +1105,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     else {   
         move_player = player_id;
     }
+
     int size=0;
     //moves = generate_all_moves(move_player, myboard);
     // number_called_generate_moves++ ;
@@ -1100,14 +1121,14 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     	// func_begin_time = clock();   
         string_to_move_cur(all_moves[i], move_player, myboard, crushed,false);
      //    func_end_time = clock();
-	    // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+        // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
 
-	    // number_called_end_states++ ;
-    	// func_begin_time = clock();   
-   	    ans = at_endstate(myboard,0);
-   	 //    func_end_time = clock();
-	    // time_end_states += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+        // number_called_end_states++ ;
+        // func_begin_time = clock();   
+        ans = at_endstate(myboard,0);
+     //    func_end_time = clock();
+        // time_end_states += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
 
         if(ans == 1.0)
@@ -1116,10 +1137,10 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             val = LONG_MIN;
         else if(ans == 0.0){
          //    number_called_get_heuristic++;
-	        // func_begin_time=clock();
-	        val= get_heuristic(myboard,false);
-	        // func_end_time=clock();
-	        // time_get_heuristic += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+            // func_begin_time=clock();
+            val= get_heuristic(myboard,false);
+            // func_end_time=clock();
+            // time_get_heuristic += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
         }
         else { 
             val= ans*LONG_MAX;  
@@ -1131,7 +1152,6 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
         undo_move(all_moves[i], move_player, myboard, crushed,false);
     	// func_end_time = clock();
 	    // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
-
 
     }
 
@@ -1150,7 +1170,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             uint64_t a1= global_hash;
 		    string_to_move_cur(move_taken, move_player, myboard, crushed,true);
       //       func_end_time = clock();
-		    // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+            // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
             string tmp = "";
             if(heur_val == LONG_MAX)
@@ -1160,9 +1180,9 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             else if(depth == 1)
                 child = heur_val; 
             else{
-            	child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum);
+                child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum);
             }    
-                beta = min(beta, child);
+            beta = min(beta, child);
             min_val = min(child, min_val);
             if(child == min_val) 
                 best_move_chosen = move_taken; 
@@ -1201,9 +1221,9 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 			// func_begin_time = clock();   
 		    string_to_move_cur(move_taken, move_player, myboard, crushed,true);
       //       func_end_time = clock();
-		    // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+            // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
-		    string tmp = "";
+            string tmp = "";
             if(heur_val == LONG_MAX)
                 child = LONG_MAX;
             else if(heur_val == LONG_MIN)
@@ -1221,7 +1241,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 		    // func_begin_time=clock();
             undo_move(move_taken, move_player, myboard, crushed,true);
       //       func_end_time = clock();
-		    // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+            // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
        
            if(alpha > beta){
            		//if(depth!=1)
@@ -1237,28 +1257,27 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     }
 } 
 
-void print_data(double total_time)
-{
-	cerr<<"The data for the move is "<<endl;
-	cerr<<"The total time taken : "<< total_time<<endl;
-	// cerr<<"Get heuristic Function"<<endl;
-	// cerr<<"Times Called : "<<number_called_get_heuristic<<endl;
-	// cerr<<"Total time taken : "<<time_get_heuristic<<endl;
-	// cerr<<"Influence Function"<<endl;
-	// cerr<<"Times Called : "<<number_called_influence<<endl;
-	// cerr<<"Total time taken : "<<time_influence<<endl;
-	// cerr<<"Generate Moves Function"<<endl;
-	// cerr<<"Times Called : "<<number_called_generate_moves<<endl;
-	// cerr<<"Total time taken : "<<time_generate_moves<<endl;
-	// cerr<<"Execute Moves Function"<<endl;
-	// cerr<<"Times Called : "<<number_called_execute_moves<<endl;
-	// cerr<<"Total time taken : "<<time_execute_moves<<endl;
-	// cerr<<"Undo Move Function"<<endl;
-	// cerr<<"Times Called : "<<number_called_undo_moves<<endl;
-	// cerr<<"Total time taken : "<<time_undo_moves<<endl;
-	// cerr<<"End State Function"<<endl;
-	// cerr<<"Times Called : "<<number_called_end_states<<endl;
-	// cerr<<"Total time taken : "<<time_end_states<<endl;
+void print_data(double total_time) {
+    cerr<<"The data for the move is "<<endl;
+    cerr<<"The total time taken : "<< total_time<<endl;
+    // cerr<<"Get heuristic Function"<<endl;
+    // cerr<<"Times Called : "<<number_called_get_heuristic<<endl;
+    // cerr<<"Total time taken : "<<time_get_heuristic<<endl;
+    // cerr<<"Influence Function"<<endl;
+    // cerr<<"Times Called : "<<number_called_influence<<endl;
+    // cerr<<"Total time taken : "<<time_influence<<endl;
+    // cerr<<"Generate Moves Function"<<endl;
+    // cerr<<"Times Called : "<<number_called_generate_moves<<endl;
+    // cerr<<"Total time taken : "<<time_generate_moves<<endl;
+    // cerr<<"Execute Moves Function"<<endl;
+    // cerr<<"Times Called : "<<number_called_execute_moves<<endl;
+    // cerr<<"Total time taken : "<<time_execute_moves<<endl;
+    // cerr<<"Undo Move Function"<<endl;
+    // cerr<<"Times Called : "<<number_called_undo_moves<<endl;
+    // cerr<<"Total time taken : "<<time_undo_moves<<endl;
+    // cerr<<"End State Function"<<endl;
+    // cerr<<"Times Called : "<<number_called_end_states<<endl;
+    // cerr<<"Total time taken : "<<time_end_states<<endl;
  //    cerr<<"Percentage : "<<(float)time_end_states/total_time*100<<endl;
 
 
@@ -1277,7 +1296,25 @@ void print_data(double total_time)
  // number_called_undo_moves=0;
  // number_called_end_states=0;
 }
-int main(int argc, char** argv){
+
+int get_score(state Board[8][8], bool winner) {
+    int count1 = 0;
+    int count2 = 0;
+    for(int i = 0; i < board_size; i++) {
+        for(int j = 0; j< board_size; j++) {
+            if(Board[i][j].captured == 3 || Board[i][j].captured == 5)
+                count2++;
+            else if(Board[i][j].captured == 0 || Board[i][j].captured == 2)
+                count1++;
+        }
+    }
+    if(winner)
+        return count1;
+    else
+        return count2;
+}
+
+int main(int argc, char** argv) {
     diff[0]=0;
     diff[1]=25+10;
     diff[2]=55+20;
@@ -1354,11 +1391,24 @@ int main(int argc, char** argv){
             // print_board(Board);
             cerr<<endl;
             endstate_val = at_endstate(Board,debug);
-            if(endstate_val > 0.0)
+            if(endstate_val > 0.0){
                 cerr<<"You are the winner"<<endl;
-            else if(endstate_val < 0.0)
+                if(endstate_val == 10.0)
+                    cerr<<"Scorewin "<<get_score(Board, true) + board_size*board_size<<endl;
+                else
+                    cerr<<"Scorewin "<<get_score(Board, true)<<endl;
+                cerr<<"Scorelose "<<get_score(Board, false)<<endl;
+            }
+            else if(endstate_val < 0.0){
                 cerr<<"You are the loser"<<endl;
-            // cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<endl;
+                if(endstate_val == -10.0)
+                    cerr<<"Scorewin "<<get_score(Board, false) + board_size*board_size<<endl;
+                else
+                    cerr<<"Scorewin "<<get_score(Board, false)<<endl;
+                cerr<<"Scorelose "<<get_score(Board, true)<<endl;
+            }
+            current_player = 1;
+            cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<endl;
             //vector<string> poss=;
             generate_all_moves(2,Board,temp_size);
             string next_move="";
@@ -1375,20 +1425,33 @@ int main(int argc, char** argv){
             // cerr<<"Finished Generating"<<temp_size<<endl;
             string_to_move_cur(next_move,2,Board,crush,false);
             // cerr<<"Move played by opponent is "<<move<<endl;
+            // print_board(Board);
+            endstate_val = at_endstate(Board,debug);
+            if(endstate_val > 0.0){
+                cerr<<"You are the winner"<<endl;
+                if(endstate_val == 10.0)
+                    cerr<<"Scorewin "<<get_score(Board, true) + board_size*board_size<<endl;
+                else
+                    cerr<<"Scorewin "<<get_score(Board, true)<<endl;
+                cerr<<"Scorelose "<<get_score(Board, false)<<endl;
+            }
+            else if(endstate_val < 0.0){
+                cerr<<"You are the loser"<<endl;
+                if(endstate_val == -10.0)
+                    cerr<<"Scorewin "<<get_score(Board, false) + board_size*board_size<<endl;
+                else
+                    cerr<<"Scorewin "<<get_score(Board, false)<<endl;
+                cerr<<"Scorelose "<<get_score(Board, true)<<endl;
+            }
+            current_player = 0;
+            cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<","<<val<<endl;
+            count++;
             cout<<next_move<<endl;
             end_time = clock();
             double time_of_move=0.0;
             time_of_move = float( end_time - begin_time ) /  CLOCKS_PER_SEC;
             time_player += time_of_move;
             print_data(time_of_move);
-            print_board(Board);
-            endstate_val = at_endstate(Board,debug);
-            if(endstate_val > 0.0)
-                cerr<<"You are the winner"<<endl;
-            else if(endstate_val < 0.0)
-                cerr<<"You are the loser"<<endl;
-            // cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<","<<val<<endl;
-            count++;
         }
     }   
      else if(player_id == 1)
@@ -1415,50 +1478,63 @@ int main(int argc, char** argv){
             crush=0;
             string next_move;
             double val;
-            if(time_limit - time_player < 20 || count < 4)
+            if(time_limit - time_player < 20 || count < 7)
                 val=best_move(Board,LONG_MIN/2,LONG_MAX/2,4,next_move,false);
             else 
                 val=best_move(Board,LONG_MIN/2,LONG_MAX/2,4,next_move,false);
             cerr<<"Count is "<<count<<endl;
             count++;
+            string_to_move_cur(next_move,1,Board,crush);
+            // print_board(Board);
+            endstate_val = at_endstate(Board,debug);
+            if(endstate_val > 0.0){
+                cerr<<"You are the winner"<<endl;
+                if(endstate_val == 10.0)
+                    cerr<<"Scorewin "<<get_score(Board, true) + board_size*board_size<<endl;
+                else
+                    cerr<<"Scorewin "<<get_score(Board, true)<<endl;
+                cerr<<"Scorelose "<<get_score(Board, false)<<endl;
+            }
+            else if(endstate_val < 0.0){
+                cerr<<"You are the loser"<<endl;
+                if(endstate_val == -10.0)
+                    cerr<<"Scorewin "<<get_score(Board, false) + board_size*board_size<<endl;
+                else
+                    cerr<<"Scorewin "<<get_score(Board, false)<<endl;
+                cerr<<"Scorelose "<<get_score(Board, true)<<endl;
+            }
+            current_player = -1;
+            cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<endl;
             cout<<next_move<<endl;
             end_time = clock();
             double time_of_move=0.0;
             time_of_move = float( end_time - begin_time ) /  CLOCKS_PER_SEC;
             time_player += time_of_move;
-            print_data(time_of_move);
-            string_to_move_cur(next_move,1,Board,crush,false);
-            // print_board(Board);
-            endstate_val = at_endstate(Board,debug);
-            if(endstate_val > 0.0)
-            {  
-              cerr<<"You are the winner"<<endl;
-              return 0;
-            }
-            else if(endstate_val < 0.0)
-            {
-                 cerr<<"You are the loser"<<endl;
-                 return 0;
-            }   
-            // cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<endl;  
+            print_data(time_of_move);  
             cin>>move;
             begin_time = clock();
             // cerr<<"Move played by opponent is "<<move<<endl;
             string_to_move_cur(move,2,Board,crush,false);
             // print_board(Board);
             endstate_val = at_endstate(Board,debug);
-            if(endstate_val > 0.0)
-            {  
-              cerr<<"You are the winner"<<endl;
-              return 0;
+            if(endstate_val > 0.0){
+                cerr<<"You are the winner"<<endl;
+                if(endstate_val == 10.0)
+                    cerr<<"Scorewin "<<get_score(Board, true) + board_size*board_size<<endl;
+                else
+                    cerr<<"Scorewin "<<get_score(Board, true)<<endl;
+                cerr<<"Scorelose "<<get_score(Board, false)<<endl;
             }
-            else if(endstate_val < 0.0)
-            {
+            else if(endstate_val < 0.0){
                 cerr<<"You are the loser"<<endl;
-                return 0;
+                if(endstate_val == -10.0)
+                    cerr<<"Scorewin "<<get_score(Board, false) + board_size*board_size<<endl;
+                else
+                    cerr<<"Scorewin "<<get_score(Board, false)<<endl;
+                cerr<<"Scorelose "<<get_score(Board, true)<<endl;
             }
-            // cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<","<<val<<endl;
-                    
+            current_player = 0;
+            cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<","<<val<<endl;       
         }
     }
     return 0;

@@ -8,7 +8,7 @@ import argparse
 class Client(Communicator):
 	def __init__(self):
 		self.GAME_TIMER = 1000000 # in Milli Seconds
-		self.NETWORK_TIMER = 1000		
+		self.NETWORK_TIMER = 10000		
 		super(Client,self).__init__()
 		pass	
 	

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## This is to run the first program main1.cpp
+## This is to run the first program main.cpp
 
 if [ -e "code" ]; then
     ./code $1

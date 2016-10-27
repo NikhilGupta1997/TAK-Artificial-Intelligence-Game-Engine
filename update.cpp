@@ -18,27 +18,27 @@ using namespace std;
 
 int main(int argc, char** argv) {
 	srand(time(NULL));
-	float diff = 0.2;
+	float diff = 0.02;
 	float val1 = stof(argv[1]);
 	float val2 = stof(argv[2]);
 	int countme = stoi(argv[3]);
 	int countyou = stoi(argv[4]);
-	if(countme > countyou) {
+	if(countme - countyou > 25) {
 		if(val1 < val2) {
 			val2 = val1;
-			val1 -= diff;
+			val1 -= diff*(countme - countyou)/25;
 		}
 		else {
 			val2 = val1;
-			val1 += diff;
+			val1 += diff*(countme - countyou)/25;
 		}
 	}
-	else if(countme < countyou){
+	else if(countyou - countme > 25){
 		if(val1 < val2) {
-			val1 = val2 + diff;
+			val1 = val2 + diff*(countyou - countme)/25;
 		}
 		else {
-			val1 = val2 - diff;
+			val1 = val2 - diff*(countyou - countme)/25;
 		}
 	}
 	else {
