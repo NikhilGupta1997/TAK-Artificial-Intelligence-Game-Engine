@@ -193,14 +193,17 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed, 
     if(!isdigit(move[0])) {
         assert(myBoard[i-1][j-1].captured == -1);
         int x;
-        if(move[0]=='F') x = 0;
-        else if(move[0]=='S') x = 1;
-        else if(move[0]=='C') x = 2;
+        if(move[0] == 'F') 
+            x = 0;
+        else if(move[0] == 'S') 
+            x = 1;
+        else if(move[0] == 'C') 
+            x = 2;
         if(id != player_id) 
             x = x+3;
         if(hash) {
             int entry = ((i-1)*board_size+(j-1))*max_height;
-            global_hash= global_hash xor zobrist_table[entry][x];
+            global_hash = global_hash xor zobrist_table[entry][x];
         }
         myBoard[i-1][j-1].captured = x;
         myBoard[i-1][j-1].state_stack.push(x);
@@ -225,9 +228,8 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed, 
         int s =  myBoard[i-1][j-1].state_stack.size();
         for(int l = 0; l < no_picked; l++) {
             top = myBoard[i-1][j-1].state_stack.top();
-            if(hash) {
-                global_hash = global_hash xor zobrist_table[entry+s][top];
-            }    
+            if(hash)
+                global_hash = global_hash xor zobrist_table[entry+s][top];   
             myBoard[i-1][j-1].state_stack.pop();
             s--;
             picked.push(top);
@@ -287,9 +289,8 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed, 
                 t1 = top1;
                 tempo.push(top1);
                 s1++;
-                if(hash) {
-                    global_hash = global_hash xor zobrist_table[entry1+s1][t1];
-                }                
+                if(hash)
+                    global_hash = global_hash xor zobrist_table[entry1+s1][t1];               
                 x1++;
             }
             myBoard[w1][w2].captured = top1;
@@ -298,7 +299,7 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed, 
     }
 }
 
-void undo_move(string move,int id,state gen_Board[8][8],int crushed,bool hash) {
+void undo_move(string move, int id,state gen_Board[8][8], int crushed, bool hash) {
     int j = (int)(move[1]) - 96;
     int i = (int)(move[2]) - 48;
     if(!isdigit(move[0])) {
@@ -362,10 +363,9 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed,bool hash) {
             int captured = gen_Board[w1][w2].captured;
             if(k == drops && gen_Board[w1][w2].state_stack.size() >= 2 && pick_up == 1 && captured % 3 == 2) {
                     reverse_drop.push(captured);
-                    x2=gen_Board[w1][w2].state_stack.top();
-                    if(hash) {
-                        global_hash = global_hash xor zobrist_table[entry2+s2][x2];
-                    }    
+                    x2 = gen_Board[w1][w2].state_stack.top();
+                    if(hash)
+                        global_hash = global_hash xor zobrist_table[entry2+s2][x2]; 
                     gen_Board[w1][w2].state_stack.pop();
                     s2--;
                     captured = gen_Board[w1][w2].state_stack.top();
@@ -381,9 +381,8 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed,bool hash) {
                             global_hash = global_hash xor zobrist_table[entry2+s2][wx];
                         }
                     }
-                    else {
-                        gen_Board[w1][w2].captured = captured;
-                    }       
+                    else 
+                        gen_Board[w1][w2].captured = captured;   
                 }
             else {   
                 int x1 = 1;
@@ -410,9 +409,8 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed,bool hash) {
             reverse_drop.pop();
             gen_Board[i-1][j-1].state_stack.push(picking);
             s3++;
-            if(hash) {
+            if(hash)
                 global_hash= global_hash xor zobrist_table[entry1+s3][picking];
-            }    
         }
         gen_Board[i-1][j-1].captured = gen_Board[i-1][j-1].state_stack.top();      
     }
@@ -692,14 +690,15 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             arr[i][j]=0;
     
     // Calculate pieces in each row and column
-    for(int i=0;i<board_size;i++) {
-        for(int j=0;j<board_size;j++) {
-            int capt=gen_board[i][j].captured;
-            if(capt==-1) 
+    for(int i = 0; i < board_size; i++) {
+        for(int j = 0; j < board_size; j++) {
+            int capt = gen_board[i][j].captured;
+            if(capt == -1) 
                 continue;
-            else
+            else {
                 arr[i][capt]++;
                 arr[j+board_size][capt]++;
+            }
         }
     }
 
@@ -841,14 +840,23 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
             capt = gen_board[i][j].captured;
             if(capt == -1){
                 if(myplayer.no_flat != 0) {                            
-                    move = "F" ; move += (char)(97+j); move += (char)(49+i);
-                    all_moves[size]=move; size++;
-                    move = "S" ; move += (char)(97+j); move += (char)(49+i);
-                    all_moves[size]=move; size++;                           
+                    move = "F" ; 
+                    move += (char)(97+j); 
+                    move += (char)(49+i);
+                    all_moves[size] = move; 
+                    size++;
+                    move = "S" ; 
+                    move += (char)(97+j); 
+                    move += (char)(49+i);
+                    all_moves[size] = move; 
+                    size++;                           
                 }
                 if(myplayer.capstone != 0) {
-                    move = "C" ; move += (char)(97+j); move += (char)(49+i);
-                    all_moves[size]=move; size++;                            
+                    move = "C" ; 
+                    move += (char)(97+j); 
+                    move += (char)(49+i);
+                    all_moves[size] = move; 
+                    size++;                            
                 }
             }
             else if(capt >= 3*index && capt < 3 + 3*index){
@@ -866,7 +874,11 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                         int part_size = part_list[y].size(); 
                         if(part_size <= dist_up) { 
                             valid = true;
-                            move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move += "-";
+                            move = ""; 
+                            move += (char)(48+x); 
+                            move += (char)(97+j); 
+                            move += (char)(49+i); 
+                            move += "-";
                             int z1 = -1;
                             for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i-z-1][j].captured;
@@ -892,7 +904,11 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                         }
                         if(part_size <= dist_down) {
                             valid = true;
-                            move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move += "+";
+                            move = ""; 
+                            move += (char)(48+x); 
+                            move += (char)(97+j); 
+                            move += (char)(49+i); 
+                            move += "+";
                             int z1 = -1;
                             for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i+z+1][j].captured;
@@ -907,7 +923,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                             int z = part_size-1;
                             curr_capt = gen_board[i+z+1][j].captured;
                             if(z1 == z)
-                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
+                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)) {
                                         move += "1";
                                         valid = true;
                                     }
@@ -918,7 +934,11 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                         }
                         if(part_size <= dist_left) {
                             valid = true;
-                            move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move += "<";
+                            move = ""; 
+                            move += (char)(48+x); 
+                            move += (char)(97+j); 
+                            move += (char)(49+i); 
+                            move += "<";
                             int z1 = -1;
                             for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i][j-z-1].captured;
@@ -944,7 +964,11 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                         }
                         if(part_size <= dist_right) {
                             valid = true;
-                            move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move += ">";
+                            move = ""; 
+                            move += (char)(48+x); 
+                            move += (char)(97+j); 
+                            move += (char)(49+i); 
+                            move += ">";
                             int z1 = -1;
                             for(int z = 0; z < part_size; z++){
                                 curr_capt = gen_board[i][j+z+1].captured;
@@ -1311,7 +1335,7 @@ int main(int argc, char** argv) {
                 val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 4, next_move, false);
             cerr<<"Repeated "<<repeated<<" out of "<<best_called<<endl;
             repeated = 0;
-            best_called = 0 ;
+            best_called = 0;
             Transposition_Table.clear();
             cerr<<"Count is "<<count<<endl;
             string_to_move_cur(next_move, 2, Board, crush, false);
