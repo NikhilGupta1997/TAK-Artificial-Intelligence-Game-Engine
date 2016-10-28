@@ -1393,6 +1393,7 @@ int main(int argc, char** argv) {
             else 
                 val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 4, next_move, false);
             cerr<<"Count is "<<count<<endl;
+            Transposition_Table.clear();
             count++;
             string_to_move_cur(next_move, 1, Board, crush, false);
             // print_board(Board);
