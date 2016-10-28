@@ -19,11 +19,12 @@ using namespace std;
 
 #define MAX_BOARD_SIZE 8 
 #define Hash_size 124000000 
+
 static int max_height = 60;
 
 // Some cout variables
-static int prune=0;
-int best_called=0;
+static int prune = 0;
+static int best_called = 0;
 
 // Evaluation function variables
 static double capstone = 90;
@@ -64,45 +65,43 @@ static float center_value = 0.0;
 static clock_t func_begin_time;
 static clock_t func_end_time;
 
-static float time_get_heuristic=0.0;
-static float time_influence=0.0;
-static float time_generate_moves=0.0;
-static float time_execute_moves=0.0;
-static float time_undo_moves=0.0;
-static float time_end_states=0.0;
+static float time_get_heuristic = 0.0;
+static float time_influence = 0.0;
+static float time_generate_moves = 0.0;
+static float time_execute_moves = 0.0;
+static float time_undo_moves = 0.0;
+static float time_end_states = 0.0;
 
-static int number_called_get_heuristic=0;
-static int number_called_influence=0;
-static int number_called_generate_moves=0;
-static int number_called_execute_moves=0;
-static int number_called_undo_moves=0;
-static int number_called_end_states=0;
+static int number_called_get_heuristic = 0;
+static int number_called_influence = 0;
+static int number_called_generate_moves = 0;
+static int number_called_execute_moves = 0;
+static int number_called_undo_moves = 0;
+static int number_called_end_states = 0;
 
-static int top1=0;
-static int left1=0;
-static int bottom1=0;
-static int right1=0;
+static int top1 = 0;
+static int left1 = 0;
+static int bottom1 = 0;
+static int right1 = 0;
 
 static float myval;
-
-int repeated=0;
+static int repeated = 0;
 
 static uint64_t zobrist_table[300000][6];
-uint64_t global_hash=0;
-//float 
-class storage
-{
-    public:
+static uint64_t global_hash = 0;
+
+class storage {
+  public:
     float value;
     string best_move;
     int depth;
-    storage( string b , float v, int depth)
-    {
-        value = v ;
-        b = best_move ;
-        this->depth = depth ; 
+    storage(string b, float v, int depth) {
+        value = v;
+        b = best_move;
+        this->depth = depth; 
     }
 };
+
 unordered_map< uint64_t, storage > Transposition_Table(Hash_size);
 
 struct Compare_min {
@@ -117,34 +116,33 @@ struct Compare_max {
     }
 };
 
-class state{
+class state {
   public:   
     stack<int> state_stack;
     int captured;
-    // Constructor
-    state(){    
-       captured=-1;
+    
+    state() {
+       captured = -1;
     }
-    void assign(state Board)
-    {
+    
+    void assign(state Board) {
         stack<int> temp(Board.state_stack);
         swap(this->state_stack,temp);
-        this->captured=Board.captured;
+        this->captured = Board.captured;
     }
-    bool check_equal (state &other) 
-    {
-        if(captured!=other.captured)
+
+    bool check_equal(state &other) {
+        if(captured != other.captured)
             return false;
-        if(state_stack.size()!=other.state_stack.size())
+        if(state_stack.size() != other.state_stack.size())
             return false;
         stack<int> temp(other.state_stack);
         stack<int> temp_curr(this->state_stack);
-        int a1,a2;
-        while(temp.size()!=0)
-        {
+        int a1, a2;
+        while(temp.size() != 0) {
             a1 = temp.top();
             a2 = temp_curr.top();
-            if(a1!=a2)
+            if(a1 != a2)
                 return false;
             temp.pop();
             temp_curr.pop();
@@ -153,70 +151,28 @@ class state{
     }
 };
 
-/*class State_Board
-{
-public: 
-    state Board[8][8];
-    int hash;
-    State_Board()
-    {   
-        hash = 0;
-        int pos;
-        for(int i=0; i<board_size; i++)
-            for(int j=0; j<board_size; j++)
-            {   pos = (i*board_size+j)*max_height ; 
-                for(int h=0 ; h<max_height ; h++)
-                {   
-                    hash = hash xor zobrist_table[pos+h][0];    
-                }
-                
-            }
-    }
-    bool operator==(State_Board &other) 
-    {
-        for(int i=0;i<board_size;i++)
-            for(int j=0;j<board_size;j++)
-            {
-                if(!Board[i][j].check_equal(other.Board[i][j]))
-                    return false;
-            }
-        return false;    
-    }
-
-};
-
-*/
-void init_zobrist()
-{
+void init_zobrist() {
     int n_square = board_size*board_size;
-    // table[k] implies (i,j,t) if k=(i*board_size+j)*max_height+ t
-    for(int i=0;i<board_size;i++)
-    {
-        for(int j=0;j<board_size;j++)
-        {
+    for(int i = 0; i < board_size; i++) {
+        for(int j = 0; j < board_size; j++) {
             int k1 = (i*board_size+j)*max_height;
-            for(int t=0 ; t<max_height ;t++)
-            {
-                for(int piece=0;piece<6;piece++)
-                {
-                    zobrist_table[k1+t][piece]= rand() % 200000000 ;
-                   // cerr<<zobrist_table[k1+t][piece]<<endl;
+            for(int t = 0 ; t < max_height; t++) {
+                for(int piece = 0; piece < 6; piece++) {
+                    zobrist_table[k1+t][piece] = rand() % 200000000 ;
                 }
             }
         }
     }
 }
-//unordered_map<int,double> tt;
-//unorderd_map<state[8][8],double,state_hash> Transposition_Table;
+
 class Player {
   public:
-    // to store no of pieces remaining
     int no_flat;
     int capstone;
-    int id; // 1 or 2e
+    int id; 
 
     void assign (int n) {
-        if(n == 5){
+        if(n == 5) {
             this->no_flat=21;
             this->capstone=1;
         }
@@ -231,9 +187,9 @@ class Player {
     }
 } cur_player, other_player;
 
-void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed,bool hash) { // executes a valid move on the Board
-    int j = (int)(move[1]) - 96;    // stores movement across a,b,...
-    int i = (int)(move[2]) - 48;    // stores from 1,2..
+void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed, bool hash) {
+    int j = (int)(move[1]) - 96; 
+    int i = (int)(move[2]) - 48;   
     if(!isdigit(move[0])) {
         assert(myBoard[i-1][j-1].captured == -1);
         int x;
@@ -241,10 +197,8 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed,b
         else if(move[0]=='S') x = 1;
         else if(move[0]=='C') x = 2;
         if(id != player_id) 
-            x = x+3;    // Maps the pices to those of the opponent (3,4,5)
-        // table entry would be ((i-1)*board_size+(j-1))*max_height
-        if(hash) // placing the piece
-        {
+            x = x+3;
+        if(hash) {
             int entry = ((i-1)*board_size+(j-1))*max_height;
             global_hash= global_hash xor zobrist_table[entry][x];
         }
@@ -271,8 +225,7 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed,b
         int s =  myBoard[i-1][j-1].state_stack.size();
         for(int l = 0; l < no_picked; l++) {
             top = myBoard[i-1][j-1].state_stack.top();
-            if(hash)
-            {
+            if(hash) {
                 global_hash = global_hash xor zobrist_table[entry+s][top];
             }    
             myBoard[i-1][j-1].state_stack.pop();
@@ -291,24 +244,24 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed,b
             drop.push_back(i1);
         }
         int mi, mj;
-        if(dir == '+'){
+        if(dir == '+') {
             mi = 1; 
             mj = 0;
         }
-        else if(dir == '-'){
+        else if(dir == '-') {
             mi = -1; 
             mj = 0;
         }
-        else if(dir == '>'){
+        else if(dir == '>') {
             mi = 0; 
             mj = 1;
         }
-        else{
+        else {
             mi = 0; 
             mj = -1;
         }
-        int w1,w2;  
-        for(int k = 1; k <= drop.size(); k++) { // Dropping the stack
+        int w1, w2;  
+        for(int k = 1; k <= drop.size(); k++) {
             w1 = i-1+k*mi;
             w2 = j-1+k*mj;
             stack<int> tempo(myBoard[w1][w2].state_stack);
@@ -321,24 +274,21 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed,b
             while(x1 <= drop[k-1]) {
                 top1 = picked.top();
                 picked.pop();
-                if(drop[k-1] == 1 && t1 % 3 == 1) {// placing on wall .. must be a cap
+                if(drop[k-1] == 1 && t1 % 3 == 1) {
                     int xw = tempo.top();
                     tempo.pop();
                     tempo.push(xw-1);
-                    //s1++;
-                    if(hash)
-                    {
-                        global_hash = global_hash xor zobrist_table[entry1+s1][xw] ;  // xor with earlier val
-                        global_hash = global_hash xor zobrist_table[entry1+s1][xw-1] ; // xor with new position
+                    if(hash) {
+                        global_hash = global_hash xor zobrist_table[entry1+s1][xw];
+                        global_hash = global_hash xor zobrist_table[entry1+s1][xw-1]; 
                     }    
                     crushed=1;      
                 }   
                 t1 = top1;
                 tempo.push(top1);
                 s1++;
-                if(hash)
-                {
-                    global_hash = global_hash xor zobrist_table[entry1+s1][t1] ;
+                if(hash) {
+                    global_hash = global_hash xor zobrist_table[entry1+s1][t1];
                 }                
                 x1++;
             }
@@ -349,16 +299,14 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed,b
 }
 
 void undo_move(string move,int id,state gen_Board[8][8],int crushed,bool hash) {
-    int j = (int)(move[1]) - 96;    // stores movement across a,b,...
-    int i = (int)(move[2]) - 48;    // stores from 1,2..
-    // if first position is integer then its a Move move else a place
-    if(!isdigit(move[0])){
-        int x = gen_Board[i-1][j-1].state_stack.top() ;
+    int j = (int)(move[1]) - 96;
+    int i = (int)(move[2]) - 48;
+    if(!isdigit(move[0])) {
+        int x = gen_Board[i-1][j-1].state_stack.top();
         gen_Board[i-1][j-1].captured = -1;
-        if(hash)
-        {
+        if(hash) {
             int entry = ((i-1)*board_size+(j-1))*max_height;
-            global_hash= global_hash xor zobrist_table[entry][x];
+            global_hash = global_hash xor zobrist_table[entry][x];
         }
         gen_Board[i-1][j-1].state_stack.pop();
         if(move[0] == 'F' || move[0] == 'S') {
@@ -380,37 +328,42 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed,bool hash) {
         int drops = move.length()-4;
         int dropped[8];
         char dir = move[3];
-        for(int l = 4; l < move.length(); l++) { // storing the quantity dropped in successive order
+        for(int l = 4; l < move.length(); l++) {
             char m_ch = move[l];
             int i1 = (int)m_ch -48;
             dropped[l-4] = i1;
         }
-        //dropped stores the amount it drops
         int mi, mj;
-        if(dir == '+')
-            {mi = 1; mj = 0; }
-        else if(dir == '-')
-            {mi = -1; mj = 0;}
-        else if(dir == '>')
-            {mi = 0; mj = 1; }
-        else
-            {mi = 0; mj = -1;}
+        if(dir == '+') {
+            mi = 1; 
+            mj = 0; 
+        }
+        else if(dir == '-') {
+            mi = -1; 
+            mj = 0;
+        }
+        else if(dir == '>') {
+            mi = 0; 
+            mj = 1; 
+        }
+        else {
+            mi = 0; 
+            mj = -1;
+        }
         stack<int> reverse_drop;
-        int pick_up,w1,w2 ;
-        for(int k=drops;k>0;k--) {// picking the pieces 
+        int pick_up, w1, w2;
+        for(int k = drops; k > 0; k--) {
             w1 = i-1+k*mi;
             w2 = j-1+k*mj;
             pick_up = dropped[k-1];
-            int entry2= (w1*board_size+w2)*max_height;
+            int entry2 = (w1*board_size+w2)*max_height;
             int x2;
-            int s2=gen_Board[w1][w2].state_stack.size();                    
+            int s2 = gen_Board[w1][w2].state_stack.size();                    
             int captured = gen_Board[w1][w2].captured;
-            if(k == drops && gen_Board[w1][w2].state_stack.size() >= 2 && pick_up == 1 && captured % 3 == 2) {// if capstone was picked up
-
+            if(k == drops && gen_Board[w1][w2].state_stack.size() >= 2 && pick_up == 1 && captured % 3 == 2) {
                     reverse_drop.push(captured);
                     x2=gen_Board[w1][w2].state_stack.top();
-                    if(hash)
-                    {
+                    if(hash) {
                         global_hash = global_hash xor zobrist_table[entry2+s2][x2];
                     }    
                     gen_Board[w1][w2].state_stack.pop();
@@ -423,8 +376,7 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed,bool hash) {
                         wx++;
                         gen_Board[w1][w2].state_stack.push(wx);
                         gen_Board[w1][w2].captured = wx;
-                        if(hash)
-                       {
+                        if(hash) {
                             global_hash = global_hash xor zobrist_table[entry2+s2][wx-1];
                             global_hash = global_hash xor zobrist_table[entry2+s2][wx];
                         }
@@ -438,8 +390,7 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed,bool hash) {
                 while(x1 <= pick_up) {   
                     reverse_drop.push(gen_Board[w1][w2].state_stack.top());
                     x2 = gen_Board[w1][w2].state_stack.top();
-                    if(hash)
-                    {
+                    if(hash) {
                         global_hash = global_hash xor zobrist_table[entry2+s2][x2];
                     }
                     gen_Board[w1][w2].state_stack.pop();    
@@ -452,7 +403,6 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed,bool hash) {
                     gen_Board[w1][w2].captured = gen_Board[w1][w2].state_stack.top();
             }
         }
-        //Lets drop them back
         int entry1 = ((i-1)*board_size+(j-1))*max_height; 
         int  s3 = gen_Board[i-1][j-1].state_stack.size();
         while(reverse_drop.size() != 0) {
@@ -460,8 +410,7 @@ void undo_move(string move,int id,state gen_Board[8][8],int crushed,bool hash) {
             reverse_drop.pop();
             gen_Board[i-1][j-1].state_stack.push(picking);
             s3++;
-            if(hash)
-            {
+            if(hash) {
                 global_hash= global_hash xor zobrist_table[entry1+s3][picking];
             }    
         }
@@ -530,13 +479,17 @@ int DFS(int i, int j, int myboard[8][8],  int player_id, state gen_board[8][8], 
             continue;
         myboard[curr_i][curr_j] = 1;
         if(gen_board[curr_i][curr_j].captured == (0 + player_id * 3) || gen_board[curr_i][curr_j].captured == (2 + player_id * 3)) {
-            if(curr_i==0) top1=1;
-            if(curr_i==board_size-1) bottom1=1;
-            if(curr_j==0) left1=1;
-            if(curr_j==board_size-1) right1=1;            
-            if(top1==1 && bottom1==1)
+            if(curr_i == 0) 
+                top1 = 1;
+            if(curr_i == board_size-1) 
+                bottom1 = 1;
+            if(curr_j == 0) 
+                left1 = 1;
+            if(curr_j == board_size-1) 
+                right1 = 1;            
+            if(top1 == 1 && bottom1 == 1)
                 return true;
-            if(left1==1 && right1==1)
+            if(left1 == 1 && right1 == 1)
                 return true;    
             road = DFS(curr_i, curr_j, myboard, player_id, gen_board, size);
             if(road)
@@ -592,53 +545,46 @@ void initialise() {
 }
 
 double at_endstate(state gen_board[8][8],int debug) {
-    //return 0.0;
     bool road = false;
     reset_visited(temp_board);
-    //cout<<"Checking End state"<<endl;
     for(int i = 0; i < board_size; i++) {
         int capt_i = gen_board[i][0].captured;
         if((capt_i == 0 || capt_i == 2) && (temp_board[i][0] == 0)) {
             temp_board[i][0] = 1;
-            if(i==0) top1 = 1;
-            left1=1;
+            if(i == 0) 
+                top1 = 1;
+            left1 = 1;
             road = DFS(i, 0, temp_board, 0, gen_board, 0);
             initialise();
-            if(road){
+            if(road)
                 return 10.0;
-            }
         }
     }
     for(int j = 1; j < board_size; j++) {
         int capt_j = gen_board[0][j].captured;
         if((capt_j == 0 || capt_j == 2) && (temp_board[0][j] == 0)) {
             temp_board[0][j] = 1;
-            top1 = 1 ;
-            road = DFS(0, j, temp_board,  0, gen_board, 0);
+            top1 = 1;
+            road = DFS(0, j, temp_board, 0, gen_board, 0);
             initialise();
-            if(road){
+            if(road)
                 return 10.0;
-            }
         }
     }
     reset_visited(temp_board);
-    //cout<<"CHecking End state1"<<endl;
     for(int i = 0; i < board_size; i++) {
         int capt_i = gen_board[i][0].captured;
         if((capt_i == 3 || capt_i == 5) && (temp_board[i][0] == 0)) {
             temp_board[i][0] = 1;
-            if(i==0) top1=1;
-            left1=1;
+            if(i == 0) 
+                top1 = 1;
+            left1 = 1;
             road = DFS(i, 0, temp_board, 1, gen_board, 0);
             initialise();
-            if(road){
+            if(road)
                 return -10.0;
-            }
         } 
     }
-    //cout<<"CHecking End state2"<<endl;
-    //reset_visited(temp_board);
-    //cout<<"CHecking End state3"<<endl;
     for(int j = 1; j < board_size; j++) {
         int capt_j = gen_board[0][j].captured;
         if((capt_j == 3 || capt_j == 5) && (temp_board[0][j] == 0)) {
@@ -646,10 +592,8 @@ double at_endstate(state gen_board[8][8],int debug) {
             top1 = 1;
             road = DFS(0, j, temp_board,  1, gen_board, 0);
             initialise();
-
-            if(road){
+            if(road)
                 return -10.0;
-            }
         }    
     }
 
@@ -680,21 +624,20 @@ void print_board(state Board[8][8]) {
     }
 }
 
-void influence(float infl_arr[8][8], state gen_board[8][8], float flat, float wall, float cap){
-    for(int i = 0; i < board_size; i++){
-        for(int j = 0; j < board_size; j++){
+void influence(float infl_arr[8][8], state gen_board[8][8], float flat, float wall, float cap) {
+    for(int i = 0; i < board_size; i++) {
+        for(int j = 0; j < board_size; j++) {
             infl_arr[i][j] = 0.0;
         }
     }
-    for(int i = 0; i < board_size; i++){
-        for(int j = 0; j < board_size; j++){
-            // Map the value of k
+    for(int i = 0; i < board_size; i++) {
+        for(int j = 0; j < board_size; j++) {
             float k;
             int capt = gen_board[i][j].captured;
             int temp;
             if(capt == -1)
                 k = 0;
-            else if(capt < 3){
+            else if(capt < 3) {
                 if(capt == 0)
                     k = flat;
                 else if(capt == 1)
@@ -702,7 +645,7 @@ void influence(float infl_arr[8][8], state gen_board[8][8], float flat, float wa
                 else
                     k = cap;
             }
-            else if(capt >= 3){
+            else if(capt >= 3) {
                 if(capt == 3)
                     k = -flat;
                 else if(capt == 4)
@@ -711,7 +654,7 @@ void influence(float infl_arr[8][8], state gen_board[8][8], float flat, float wa
                     k = -cap;
             }
 
-            if(k != 0){
+            if(k != 0) {
                 // Change current
                 infl_arr[i][j] += k;
                 // Change up
@@ -735,7 +678,7 @@ void influence(float infl_arr[8][8], state gen_board[8][8], float flat, float wa
     }
 }
 
-double get_heuristic(state gen_board[8][8], bool debug){
+double get_heuristic(state gen_board[8][8], bool debug) {
     // Define different heuristic values
     heuristic_value = 0.0;
     captured = 0.0;
@@ -743,14 +686,14 @@ double get_heuristic(state gen_board[8][8], bool debug){
     piece_val = 0.0;
 
     // Initialize our array
-    int arr[16][6];// 0 to board_size -1 are for rows
+    int arr[16][6]; 
     for(int i=0;i<2*board_size;i++)
         for(int j=0;j<6;j++)
             arr[i][j]=0;
     
     // Calculate pieces in each row and column
-    for(int i=0;i<board_size;i++){
-        for(int j=0;j<board_size;j++){
+    for(int i=0;i<board_size;i++) {
+        for(int j=0;j<board_size;j++) {
             int capt=gen_board[i][j].captured;
             if(capt==-1) 
                 continue;
@@ -761,21 +704,13 @@ double get_heuristic(state gen_board[8][8], bool debug){
     }
 
     // NUMBER SQUARES CAPTURED
-        for(int i = 0; i < board_size; i++){
+        for(int i = 0; i < board_size; i++) {
             captured += (arr[i][0]-arr[i][3])*50 + (arr[i][2]-arr[i][5])*80;
         }
 
     // SAME ROW PIECES HAS MORE WEIGHT
-         composition_value = 0.0;
-        // int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
-        // int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
-        // int cddddapt_diff;
-        // float against_wall = 40, for_wall = 10;
-        // capture_advantage = 0.0;
-        // capture_disadvantage = 0.0;
-        // wall_disadvantage = 0.0;
-        // center_weight = 5;
-           center_value = 0.0;
+        composition_value = 0.0;
+        center_value = 0.0;
         for(int i=0;i<2*board_size;i++){
             flat_capt_me = arr[i][0];
             wall_capt_me = arr[i][1];
@@ -885,39 +820,34 @@ double get_heuristic(state gen_board[8][8], bool debug){
     return heuristic_value;
 }
 
-void generate_all_moves(int id, state gen_board[8][8],int &size){
-    
+void generate_all_moves(int id, state gen_board[8][8],int &size) {
     // Initialize variables
-    //vector<string> all_moves;
     size=0;
     string move;
     bool valid;
     Player myplayer;
     int index, capt, curr_capt;
 
-    if(id == player_id){
+    if(id == player_id) {
         myplayer = cur_player;
         index = 0;
     }
-    else{
+    else {
         myplayer = other_player;
         index = 1;
     }
-    for(int i = 0; i < board_size; i++){
-        for(int j = 0; j < board_size; j++){
+    for(int i = 0; i < board_size; i++) {
+        for(int j = 0; j < board_size; j++) {
             capt = gen_board[i][j].captured;
             if(capt == -1){
-                if(myplayer.no_flat != 0){                            
+                if(myplayer.no_flat != 0) {                            
                     move = "F" ; move += (char)(97+j); move += (char)(49+i);
-                    //all_moves.push_back(move);
                     all_moves[size]=move; size++;
                     move = "S" ; move += (char)(97+j); move += (char)(49+i);
-                    //all_moves.push_back(move); 
                     all_moves[size]=move; size++;                           
                 }
-                if(myplayer.capstone != 0){
+                if(myplayer.capstone != 0) {
                     move = "C" ; move += (char)(97+j); move += (char)(49+i);
-                    //all_moves.push_back(move);
                     all_moves[size]=move; size++;                            
                 }
             }
@@ -930,20 +860,19 @@ void generate_all_moves(int id, state gen_board[8][8],int &size){
                 int dist_right = board_size - 1 - j;
                 vector< vector<int> > part_list;
 
-                for(int x = 1; x <= stack_size; x++){
-                    part_list = partition(x); // Stores all possible permutations
-                    for(int y = 0; y < part_list.size(); y++){
+                for(int x = 1; x <= stack_size; x++) {
+                    part_list = partition(x);
+                    for(int y = 0; y < part_list.size(); y++) { 
                         int part_size = part_list[y].size(); 
-                        if(part_size <= dist_up){ 
+                        if(part_size <= dist_up) { 
                             valid = true;
                             move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move += "-";
                             int z1 = -1;
-                            for(int z = 0; z < part_size; z++){
+                            for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i-z-1][j].captured;
-                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
+                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1)
                                     move += (char)(48+part_list[y][z]);
-                                }  
-                                else{
+                                else {
                                     valid = false;
                                     z1 = z;
                                     break;
@@ -952,98 +881,91 @@ void generate_all_moves(int id, state gen_board[8][8],int &size){
                             int z = part_size-1;
                             curr_capt = gen_board[i-z-1][j].captured;
                             if(z1 == z)
-                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
+                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)) {
                                         move += "1";
                                         valid = true;
-                                    }
-                            if(valid)
-                            {
-                               // all_moves.push_back(move);
-                                all_moves[size]=move; size++;
+                                }
+                            if(valid) {
+                                all_moves[size] = move; 
+                                size++;
                             }
                         }
-                        if(part_size<=dist_down){
+                        if(part_size <= dist_down) {
                             valid = true;
                             move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move += "+";
-                            int z1=-1;
-                            for(int z = 0; z < part_size; z++){
+                            int z1 = -1;
+                            for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i+z+1][j].captured;
-                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
-                                    move += (char)(48+part_list[y][z]);
-                                }  
-                                else{
+                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1)
+                                    move += (char)(48+part_list[y][z]); 
+                                else {
                                     valid = false;
                                     z1 = z;
                                     break;
                                 }
                             }
-                            int z=part_size-1;
+                            int z = part_size-1;
                             curr_capt = gen_board[i+z+1][j].captured;
                             if(z1 == z)
                                 if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
                                         move += "1";
                                         valid = true;
                                     }
-                            if(valid)
-                             {
-                              //  all_moves.push_back(move);
-                             all_moves[size]=move; size++;
-                             }
+                            if(valid) {
+                                all_moves[size] = move; 
+                                size++;
+                            }
                         }
-                        if(part_size<=dist_left){
+                        if(part_size <= dist_left) {
                             valid = true;
-                            move = ""; move+=(char)(48+x); move += (char)(97+j); move += (char)(49+i); move+="<";
-                            int z1=-1;
-                            for(int z = 0; z < part_size; z++){
+                            move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move += "<";
+                            int z1 = -1;
+                            for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i][j-z-1].captured;
-                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
-                                    move += (char)(48+part_list[y][z]);
-                                }  
-                                else{
+                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1)
+                                    move += (char)(48+part_list[y][z]);  
+                                else {
                                     valid = false;
                                     z1 = z;
                                     break;
                                 }
                             }
-                            int z=part_size-1;
+                            int z = part_size-1;
                             curr_capt = gen_board[i][j-z-1].captured;
                             if(z1 == z)
-                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
+                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)) {
                                         move += "1";
                                         valid = true;
-                                    }
-                            if(valid)
-                            {
-                                all_moves[size]=move; size++;
-                                //all_moves.push_back(move);
+                                    } 
+                            if(valid) {
+                                all_moves[size] = move; 
+                                size++;
                             }
                         }
-                        if(part_size<=dist_right){
+                        if(part_size <= dist_right) {
                             valid = true;
-                            move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move+= ">";
-                            int z1=-1;
+                            move = ""; move += (char)(48+x); move += (char)(97+j); move += (char)(49+i); move += ">";
+                            int z1 = -1;
                             for(int z = 0; z < part_size; z++){
                                 curr_capt = gen_board[i][j+z+1].captured;
-                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1){
-                                    move += (char)(48+part_list[y][z]);
-                                }  
-                                else{
+                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1)
+                                    move += (char)(48+part_list[y][z]); 
+                                else {
                                     valid = false;
                                     z1 = z;
                                     break;
                                 }
                             }
-                            int z=part_size-1;
+                            int z = part_size-1;
                             curr_capt = gen_board[i][j+z+1].captured;
                             if(z1 == z)
-                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)){
+                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)) {
                                         move += "1";
                                         valid = true;
                                     }
-                            if(valid)
-                            {
-                               all_moves[size]=move; size++;
-                                //all_moves.push_back(move);
+                            if(valid) {
+                                all_moves[size] = move; 
+                                size++;
                             }
                         }
                     }
@@ -1051,31 +973,23 @@ void generate_all_moves(int id, state gen_board[8][8],int &size){
             }
         }
     }
-   // return all_moves;
 }
 
 double best_move(state myboard[8][8],double alpha,double beta,int depth,string &best_move_chosen,bool minimum) {
     // Declare Variables
-    //vector<string> moves;
     if(depth>=3)
     best_called++;
     int move_player;
     vector<pair<double,string> > values;
     double min_val = LONG_MAX, max_val = LONG_MIN, child, ans, val;
 
-    // check if state already checkedif (umap.find(key) == umap.end())
-    if(Transposition_Table.find(global_hash) != Transposition_Table.end() )
-    {
+    if(Transposition_Table.find(global_hash) != Transposition_Table.end()) {
         storage temp = Transposition_Table.find(global_hash)->second;
-        if(temp.depth>=depth)
-        {
-           if(depth>=3) repeated++;
-        // storage ans = Transposition_Table[global_hash] ;
+        if(temp.depth >= depth) {
+            if(depth >= 3) 
+                repeated++;
             best_move_chosen= temp.best_move;
-        // return ans.value;
-
             return temp.value;
-        //cerr<<"Found a repeated state"<<endl;
         }
     }    
 
@@ -1087,7 +1001,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
         current_player = 0;
 
     // Operations
-    if(depth == 0){
+    if(depth == 0) {
         // number_called_get_heuristic++;
         // func_begin_time=clock();
         double value_heur= get_heuristic(myboard,false);
@@ -1102,12 +1016,10 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
         else 
             move_player = 1;
     }
-    else {   
+    else  
         move_player = player_id;
-    }
 
-    int size=0;
-    //moves = generate_all_moves(move_player, myboard);
+    int size = 0;
     // number_called_generate_moves++ ;
     // func_begin_time = clock();   
     generate_all_moves(move_player,myboard,size);
@@ -1116,13 +1028,11 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
     for(int i = 0; i < size; i++) {
         int crushed = 0;
-
      //    number_called_execute_moves++ ;
     	// func_begin_time = clock();   
-        string_to_move_cur(all_moves[i], move_player, myboard, crushed,false);
+        string_to_move_cur(all_moves[i], move_player, myboard, crushed, false);
      //    func_end_time = clock();
         // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
-
 
         // number_called_end_states++ ;
         // func_begin_time = clock();   
@@ -1130,26 +1040,24 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
      //    func_end_time = clock();
         // time_end_states += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
-
         if(ans == 1.0)
             val = LONG_MAX;
         else if(ans == -1.0)
             val = LONG_MIN;
-        else if(ans == 0.0){
+        else if(ans == 0.0) {
          //    number_called_get_heuristic++;
             // func_begin_time=clock();
-            val= get_heuristic(myboard,false);
+            val = get_heuristic(myboard, false);
             // func_end_time=clock();
             // time_get_heuristic += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
         }
-        else { 
-            val= ans*LONG_MAX;  
-        }
+        else
+            val = ans*LONG_MAX;  
         values.push_back(std::make_pair(val, all_moves[i]));
 
      //    number_called_undo_moves++;
 	    // func_begin_time=clock();
-        undo_move(all_moves[i], move_player, myboard, crushed,false);
+        undo_move(all_moves[i], move_player, myboard, crushed, false);
     	// func_end_time = clock();
 	    // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
@@ -1166,9 +1074,8 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
 		 //    number_called_execute_moves++ ;
 			// func_begin_time = clock();   
-         //   cerr<<"Hash is "<<global_hash<<endl;
-            uint64_t a1= global_hash;
-		    string_to_move_cur(move_taken, move_player, myboard, crushed,true);
+            uint64_t a1 = global_hash;
+		    string_to_move_cur(move_taken, move_player, myboard, crushed, true);
       //       func_end_time = clock();
             // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
@@ -1179,9 +1086,8 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
                 child = LONG_MIN;
             else if(depth == 1)
                 child = heur_val; 
-            else{
-                child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum);
-            }    
+            else
+                child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum); 
             beta = min(beta, child);
             min_val = min(child, min_val);
             if(child == min_val) 
@@ -1189,15 +1095,12 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
       //       number_called_undo_moves++;
 		    // func_begin_time=clock();
-           // cerr<<"Hash before is "<<global_hash<<" , "<<a1<<" Move== " <<move_taken<<endl;
             undo_move(move_taken, move_player, myboard, crushed,true);
-           // cerr<<"Hash after is "<<global_hash<<" , "<<a1<<" Move== " <<move_taken<<endl;
-           // assert(global_hash==a1);
             // func_end_time = clock();
 		    // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
        
-            if(alpha > beta){
-            	// if(depth!=1)
+            if(alpha > beta) {
+            	// if(depth != 1)
              // 	cerr<<"Pruned at "<<i<<" at depth "<<depth<<endl;
                 storage temp(best_move_chosen,child,depth);
                 Transposition_Table.insert(std::make_pair(global_hash,temp));
@@ -1280,8 +1183,6 @@ void print_data(double total_time) {
     // cerr<<"Total time taken : "<<time_end_states<<endl;
  //    cerr<<"Percentage : "<<(float)time_end_states/total_time*100<<endl;
 
-
-
  // time_get_heuristic=0.0;
  // time_influence=0.0;
  // time_generate_moves=0.0;
@@ -1315,22 +1216,21 @@ int get_score(state Board[8][8], bool winner) {
 }
 
 int main(int argc, char** argv) {
-    diff[0]=0;
-    diff[1]=25+10;
-    diff[2]=55+20;
-    diff[3]=85+30;
-    diff[4]=120+45;
-    diff[5]=200+110;
-    diff[6]=155;
-    diff[7]=206;
-    mapping[0]=flatstone;
-    mapping[1]=standing;
-    mapping[2]=capstone;
+    diff[0] = 0;
+    diff[1] = 25+10;
+    diff[2] = 55+20;
+    diff[3] = 85+30;
+    diff[4] = 120+45;
+    diff[5] = 200+110;
+    diff[6] = 155;
+    diff[7] = 206;
+    mapping[0] = flatstone;
+    mapping[1] = standing;
+    mapping[2] = capstone;
     
-   // myval = stof(argv[1]);
-    myval= 1.5;
-    cerr<<"myvalue is "<<myval<<endl;
+    myval = stof(argv[1]);
     srand(time(NULL));
+
     // Clock variables
     float time_player = 0.0;
     clock_t begin_time;
@@ -1345,53 +1245,46 @@ int main(int argc, char** argv) {
     begin_time = clock();
 
     board_size = n;
-    //State_Board Game(30);
     init_zobrist();
     cur_player.assign(board_size);
     other_player.assign(board_size);
     for(int i = 0; i < board_size; i++)
         for(int j = 0; j < board_size; j++)
             Board[i][j].captured = -1;
-    int debug=1;    
+    int debug = 1;    
     string move;
     int temp_size;
     int crush = 0;        
     bool on = true;
-    if(player_id == 2)
-    {
+    if(player_id == 2) {
         cin>>move;
         begin_time = clock();
-        crush=0;
-        string_to_move_cur(move,2,Board,crush,false);
+        crush = 0;
+        string_to_move_cur(move, 2, Board, crush, false);
         // print_board(Board);
-        // wait for other persons move
-        //vector<string> poss=generate_all_moves(1,Board);
-        generate_all_moves(1,Board,temp_size);
+        generate_all_moves(1, Board, temp_size);
         int randmove = rand()%temp_size;
         while(all_moves[randmove][0] != 'F')
             randmove = rand()%temp_size;
-        //cerr << all_moves[randmove]<<" \n";
-        string_to_move_cur(all_moves[randmove],1,Board,crush,false);
+        string_to_move_cur(all_moves[randmove], 1, Board, crush, false);
         cout<<all_moves[randmove]<<endl;
         end_time = clock();
         time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
-        // print_board(Board);
-        
+        // print_board(Board);       
         int count = 0;
 
-        // play a move
         while(on) {   
-            // cerr<<"Time left = "<< time_limit - time_player<<endl; 
-            prune=0;best_called=0;
+            prune = 0;
+            best_called = 0;
             cin>>move;
             begin_time = clock();
-            crush=0;
-            string_to_move_cur(move,1,Board,crush,false);
-            crush=0;
+            crush = 0;
+            string_to_move_cur(move, 1, Board, crush, false);
+            crush = 0;
             // print_board(Board);
             cerr<<endl;
             endstate_val = at_endstate(Board,debug);
-            if(endstate_val > 0.0){
+            if(endstate_val > 0.0) {
                 cerr<<"You are the winner"<<endl;
                 if(endstate_val == 10.0)
                     cerr<<"Scorewin "<<get_score(Board, true) + board_size*board_size<<endl;
@@ -1399,7 +1292,7 @@ int main(int argc, char** argv) {
                     cerr<<"Scorewin "<<get_score(Board, true)<<endl;
                 cerr<<"Scorelose "<<get_score(Board, false)<<endl;
             }
-            else if(endstate_val < 0.0){
+            else if(endstate_val < 0.0) {
                 cerr<<"You are the loser"<<endl;
                 if(endstate_val == -10.0)
                     cerr<<"Scorewin "<<get_score(Board, false) + board_size*board_size<<endl;
@@ -1408,26 +1301,23 @@ int main(int argc, char** argv) {
                 cerr<<"Scorelose "<<get_score(Board, true)<<endl;
             }
             current_player = 1;
-            cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<endl;
-            //vector<string> poss=;
-            generate_all_moves(2,Board,temp_size);
-            string next_move="";
+            cerr<<"the heuristic value is = "<<get_heuristic(Board, true)<<endl;
+            generate_all_moves(2, Board, temp_size);
+            string next_move = "";
             double val;
             if(time_limit - time_player < 20 || count < 3)
-                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,5,next_move,false);
+                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 4, next_move, false);
             else 
-                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,6,next_move,false);
+                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 4, next_move, false);
             cerr<<"Repeated "<<repeated<<" out of "<<best_called<<endl;
-            repeated=0;
+            repeated = 0;
             best_called = 0 ;
             Transposition_Table.clear();
             cerr<<"Count is "<<count<<endl;
-            // cerr<<"Finished Generating"<<temp_size<<endl;
-            string_to_move_cur(next_move,2,Board,crush,false);
-            // cerr<<"Move played by opponent is "<<move<<endl;
+            string_to_move_cur(next_move, 2, Board, crush, false);
             // print_board(Board);
-            endstate_val = at_endstate(Board,debug);
-            if(endstate_val > 0.0){
+            endstate_val = at_endstate(Board, debug);
+            if(endstate_val > 0.0) {
                 cerr<<"You are the winner"<<endl;
                 if(endstate_val == 10.0)
                     cerr<<"Scorewin "<<get_score(Board, true) + board_size*board_size<<endl;
@@ -1435,7 +1325,7 @@ int main(int argc, char** argv) {
                     cerr<<"Scorewin "<<get_score(Board, true)<<endl;
                 cerr<<"Scorelose "<<get_score(Board, false)<<endl;
             }
-            else if(endstate_val < 0.0){
+            else if(endstate_val < 0.0) {
                 cerr<<"You are the loser"<<endl;
                 if(endstate_val == -10.0)
                     cerr<<"Scorewin "<<get_score(Board, false) + board_size*board_size<<endl;
@@ -1444,50 +1334,46 @@ int main(int argc, char** argv) {
                 cerr<<"Scorelose "<<get_score(Board, true)<<endl;
             }
             current_player = 0;
-            cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<","<<val<<endl;
+            cerr<<"the heuristic value is = "<<get_heuristic(Board, true)<<","<<val<<endl;
             count++;
             cout<<next_move<<endl;
             end_time = clock();
-            double time_of_move=0.0;
+            double time_of_move = 0.0;
             time_of_move = float( end_time - begin_time ) /  CLOCKS_PER_SEC;
             time_player += time_of_move;
             print_data(time_of_move);
         }
     }   
-     else if(player_id == 1)
-    {
-        //vector<string> poss=generate_all_moves(2,Board);
-        generate_all_moves(2,Board,temp_size);
+    else if(player_id == 1) {
+        generate_all_moves(2, Board, temp_size);
         int randmove = rand()%temp_size;
         while(all_moves[randmove][0] != 'F')
             randmove = rand()%temp_size;
         cerr<<all_moves[randmove]<<" \n";
-        string_to_move_cur(all_moves[randmove],2,Board,crush,false);
+        string_to_move_cur(all_moves[randmove], 2, Board, crush, false);
         cout<<all_moves[randmove]<<endl;
         end_time = clock();
         time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
-        crush=0;
+        crush = 0;
         cerr<<endl;
         cin>>move;
         begin_time = clock();
-        string_to_move_cur(move,1,Board,crush,false);
-        int count=0;
+        string_to_move_cur(move, 1, Board, crush, false);
+        int count = 0;
         while(on) {
-            // cerr<<"Time left = "<< time_limit - time_player<<endl; 
-            //vector<string> poss=generate_all_moves(1,Board);
-            crush=0;
+            crush = 0;
             string next_move;
             double val;
             if(time_limit - time_player < 20 || count < 7)
-                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,4,next_move,false);
+                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 4, next_move, false);
             else 
-                val=best_move(Board,LONG_MIN/2,LONG_MAX/2,4,next_move,false);
+                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 4, next_move, false);
             cerr<<"Count is "<<count<<endl;
             count++;
-            string_to_move_cur(next_move,1,Board,crush);
+            string_to_move_cur(next_move, 1, Board, crush, false);
             // print_board(Board);
-            endstate_val = at_endstate(Board,debug);
-            if(endstate_val > 0.0){
+            endstate_val = at_endstate(Board, debug);
+            if(endstate_val > 0.0) {
                 cerr<<"You are the winner"<<endl;
                 if(endstate_val == 10.0)
                     cerr<<"Scorewin "<<get_score(Board, true) + board_size*board_size<<endl;
@@ -1495,7 +1381,7 @@ int main(int argc, char** argv) {
                     cerr<<"Scorewin "<<get_score(Board, true)<<endl;
                 cerr<<"Scorelose "<<get_score(Board, false)<<endl;
             }
-            else if(endstate_val < 0.0){
+            else if(endstate_val < 0.0) {
                 cerr<<"You are the loser"<<endl;
                 if(endstate_val == -10.0)
                     cerr<<"Scorewin "<<get_score(Board, false) + board_size*board_size<<endl;
@@ -1504,17 +1390,16 @@ int main(int argc, char** argv) {
                 cerr<<"Scorelose "<<get_score(Board, true)<<endl;
             }
             current_player = -1;
-            cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<endl;
+            cerr<<"the heuristic value is = "<<get_heuristic(Board, true)<<endl;
             cout<<next_move<<endl;
             end_time = clock();
-            double time_of_move=0.0;
+            double time_of_move = 0.0;
             time_of_move = float( end_time - begin_time ) /  CLOCKS_PER_SEC;
             time_player += time_of_move;
             print_data(time_of_move);  
             cin>>move;
             begin_time = clock();
-            // cerr<<"Move played by opponent is "<<move<<endl;
-            string_to_move_cur(move,2,Board,crush,false);
+            string_to_move_cur(move, 2, Board, crush, false);
             // print_board(Board);
             endstate_val = at_endstate(Board,debug);
             if(endstate_val > 0.0){
@@ -1534,7 +1419,7 @@ int main(int argc, char** argv) {
                 cerr<<"Scorelose "<<get_score(Board, true)<<endl;
             }
             current_player = 0;
-            cerr<<"the heuristic value is = "<<get_heuristic(Board,true)<<","<<val<<endl;       
+            cerr<<"the heuristic value is = "<<get_heuristic(Board, true)<<","<<val<<endl;       
         }
     }
     return 0;
