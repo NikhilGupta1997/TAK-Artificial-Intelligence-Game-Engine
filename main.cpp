@@ -201,10 +201,10 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed, 
             x = 2;
         if(id != player_id) 
             x = x+3;
-        if(hash) {
-            int entry = ((i-1)*board_size+(j-1))*max_height;
-            global_hash = global_hash xor zobrist_table[entry][x];
-        }
+        // if(hash) {
+        //     int entry = ((i-1)*board_size+(j-1))*max_height;
+        //     global_hash = global_hash xor zobrist_table[entry][x];
+        // }
         myBoard[i-1][j-1].captured = x;
         myBoard[i-1][j-1].state_stack.push(x);
         if(move[0] == 'F' || move[0] == 'S') {
@@ -280,17 +280,17 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed, 
                     int xw = tempo.top();
                     tempo.pop();
                     tempo.push(xw-1);
-                    if(hash) {
-                        global_hash = global_hash xor zobrist_table[entry1+s1][xw];
-                        global_hash = global_hash xor zobrist_table[entry1+s1][xw-1]; 
-                    }    
+                    // if(hash) {
+                    //     global_hash = global_hash xor zobrist_table[entry1+s1][xw];
+                    //     global_hash = global_hash xor zobrist_table[entry1+s1][xw-1]; 
+                    // }    
                     crushed=1;      
                 }   
                 t1 = top1;
                 tempo.push(top1);
                 s1++;
-                if(hash)
-                    global_hash = global_hash xor zobrist_table[entry1+s1][t1];               
+                // if(hash)
+                //     global_hash = global_hash xor zobrist_table[entry1+s1][t1];               
                 x1++;
             }
             myBoard[w1][w2].captured = top1;
@@ -305,10 +305,10 @@ void undo_move(string move, int id,state gen_Board[8][8], int crushed, bool hash
     if(!isdigit(move[0])) {
         int x = gen_Board[i-1][j-1].state_stack.top();
         gen_Board[i-1][j-1].captured = -1;
-        if(hash) {
-            int entry = ((i-1)*board_size+(j-1))*max_height;
-            global_hash = global_hash xor zobrist_table[entry][x];
-        }
+        // if(hash) {
+        //     int entry = ((i-1)*board_size+(j-1))*max_height;
+        //     global_hash = global_hash xor zobrist_table[entry][x];
+        // }
         gen_Board[i-1][j-1].state_stack.pop();
         if(move[0] == 'F' || move[0] == 'S') {
             if(id == player_id) 
@@ -364,8 +364,8 @@ void undo_move(string move, int id,state gen_Board[8][8], int crushed, bool hash
             if(k == drops && gen_Board[w1][w2].state_stack.size() >= 2 && pick_up == 1 && captured % 3 == 2) {
                     reverse_drop.push(captured);
                     x2 = gen_Board[w1][w2].state_stack.top();
-                    if(hash)
-                        global_hash = global_hash xor zobrist_table[entry2+s2][x2]; 
+                    // if(hash)
+                    //     global_hash = global_hash xor zobrist_table[entry2+s2][x2]; 
                     gen_Board[w1][w2].state_stack.pop();
                     s2--;
                     captured = gen_Board[w1][w2].state_stack.top();
@@ -376,10 +376,10 @@ void undo_move(string move, int id,state gen_Board[8][8], int crushed, bool hash
                         wx++;
                         gen_Board[w1][w2].state_stack.push(wx);
                         gen_Board[w1][w2].captured = wx;
-                        if(hash) {
-                            global_hash = global_hash xor zobrist_table[entry2+s2][wx-1];
-                            global_hash = global_hash xor zobrist_table[entry2+s2][wx];
-                        }
+                        // if(hash) {
+                        //     global_hash = global_hash xor zobrist_table[entry2+s2][wx-1];
+                        //     global_hash = global_hash xor zobrist_table[entry2+s2][wx];
+                        // }
                     }
                     else 
                         gen_Board[w1][w2].captured = captured;   
@@ -389,9 +389,9 @@ void undo_move(string move, int id,state gen_Board[8][8], int crushed, bool hash
                 while(x1 <= pick_up) {   
                     reverse_drop.push(gen_Board[w1][w2].state_stack.top());
                     x2 = gen_Board[w1][w2].state_stack.top();
-                    if(hash) {
-                        global_hash = global_hash xor zobrist_table[entry2+s2][x2];
-                    }
+                    // if(hash) {
+                    //     global_hash = global_hash xor zobrist_table[entry2+s2][x2];
+                    // }
                     gen_Board[w1][w2].state_stack.pop();    
                     s2--;
                     x1++;
@@ -409,8 +409,8 @@ void undo_move(string move, int id,state gen_Board[8][8], int crushed, bool hash
             reverse_drop.pop();
             gen_Board[i-1][j-1].state_stack.push(picking);
             s3++;
-            if(hash)
-                global_hash= global_hash xor zobrist_table[entry1+s3][picking];
+            // if(hash)
+            //     global_hash= global_hash xor zobrist_table[entry1+s3][picking];
         }
         gen_Board[i-1][j-1].captured = gen_Board[i-1][j-1].state_stack.top();      
     }
@@ -1007,15 +1007,15 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     vector<pair<double,string> > values;
     double min_val = LONG_MAX, max_val = LONG_MIN, child, ans, val;
 
-    if(Transposition_Table.find(global_hash) != Transposition_Table.end()) {
-        storage temp = Transposition_Table.find(global_hash)->second;
-        if(temp.depth >= depth) {
-            if(depth >= 3) 
-                repeated++;
-            best_move_chosen= temp.best_move;
-            return temp.value;
-        }
-    }    
+    // if(Transposition_Table.find(global_hash) != Transposition_Table.end()) {
+    //     storage temp = Transposition_Table.find(global_hash)->second;
+    //     if(temp.depth >= depth) {
+    //         if(depth >= 3) 
+    //             repeated++;
+    //         best_move_chosen= temp.best_move;
+    //         return temp.value;
+    //     }
+    // }    
 
     if(!minimum && player_id == 1)
         current_player = -1;
@@ -1126,13 +1126,13 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             if(alpha > beta) {
             	// if(depth != 1)
              // 	cerr<<"Pruned at "<<i<<" at depth "<<depth<<endl;
-                storage temp(best_move_chosen,child,depth);
-                Transposition_Table.insert(std::make_pair(global_hash,temp));
+                // storage temp(best_move_chosen,child,depth);
+                // Transposition_Table.insert(std::make_pair(global_hash,temp));
                 return child;
             }    
         }
-        storage temp(best_move_chosen,min_val,depth);
-        Transposition_Table.insert(std::make_pair(global_hash,temp));
+        // storage temp(best_move_chosen,min_val,depth);
+        // Transposition_Table.insert(std::make_pair(global_hash,temp));
         return min_val;
     }
     else {
@@ -1173,13 +1173,13 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
            if(alpha > beta){
            		//if(depth!=1)
              	//cerr<<"Pruned at "<<i<<" at depth "<<depth<<endl;
-                storage temp(best_move_chosen,child,depth);
-                Transposition_Table.insert(std::make_pair(global_hash,temp));
+                // storage temp(best_move_chosen,child,depth);
+                // Transposition_Table.insert(std::make_pair(global_hash,temp));
                 return child;
             }    
         }
-        storage temp(best_move_chosen,max_val,depth);
-        Transposition_Table.insert(std::make_pair(global_hash,temp));
+        // storage temp(best_move_chosen,max_val,depth);
+        // Transposition_Table.insert(std::make_pair(global_hash,temp));
         return max_val;
     }
 } 
@@ -1336,7 +1336,7 @@ int main(int argc, char** argv) {
             cerr<<"Repeated "<<repeated<<" out of "<<best_called<<endl;
             repeated = 0;
             best_called = 0;
-            Transposition_Table.clear();
+            //Transposition_Table.clear();
             cerr<<"Count is "<<count<<endl;
             string_to_move_cur(next_move, 2, Board, crush, false);
             // print_board(Board);
