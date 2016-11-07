@@ -1330,9 +1330,9 @@ int main(int argc, char** argv) {
             string next_move = "";
             double val;
             if(time_limit - time_player < 20 || count < 3)
-                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 4, next_move, false);
+                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 5, next_move, false);
             else 
-                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 4, next_move, false);
+                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 6, next_move, false);
             cerr<<"Repeated "<<repeated<<" out of "<<best_called<<endl;
             repeated = 0;
             best_called = 0;
@@ -1389,9 +1389,9 @@ int main(int argc, char** argv) {
             string next_move;
             double val;
             if(time_limit - time_player < 20 || count < 7)
-                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 4, next_move, false);
+                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 5, next_move, false);
             else 
-                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 4, next_move, false);
+                val = best_move(Board, LONG_MIN/2, LONG_MAX/2, 6, next_move, false);
             cerr<<"Count is "<<count<<endl;
             Transposition_Table.clear();
             count++;
