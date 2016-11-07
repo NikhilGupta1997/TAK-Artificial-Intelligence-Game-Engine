@@ -749,8 +749,8 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             piece_val += 60;
 
         // See how many flatstones left
-        piece_val -= 20*cur_player.no_flat;
-        piece_val += 20*other_player.no_flat;
+        piece_val -= 22*cur_player.no_flat;
+        piece_val += 22*other_player.no_flat;
 
     // INFLUENCE
         double infl_value = 0;
@@ -1086,7 +1086,22 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             // cerr<<"Flat win detected"<<endl;
             val = ans*LONG_MAX;  
         }
-        values.push_back(std::make_pair(val, all_moves[i]));
+        if(depth != 1)
+            values.push_back(std::make_pair(val, all_moves[i]));
+        else if(minimum) {
+            child = val;
+            beta = min(beta, child);
+            min_val = min(child, min_val);
+            if(child == min_val) 
+                best_move_chosen = all_moves[i];
+        }
+        else {
+            child = val;
+            alpha = max(alpha, child);
+            max_val = max(child, max_val);
+            if(child == max_val) 
+                best_move_chosen = all_moves[i];
+        }
 
      //    number_called_undo_moves++;
         // func_begin_time=clock();
@@ -1094,6 +1109,15 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
         // func_end_time = clock();
         // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
+        if(alpha > beta) {
+            return child;
+        } 
+    }
+    if(depth == 1) {
+        if(minimum)
+            return min_val;
+        else
+            return max_val;
     }
 
     if(minimum) {
@@ -1415,7 +1439,7 @@ int main(int argc, char** argv) {
             count++;
             int limit = 6;
             if(time_limit - time_player < 20 || count < 6)
-                limit = 4;
+                limit = 6;
             for(int i = 2; i <= limit; i++) {
                 best_called = 0;
                 ids_start = clock();
