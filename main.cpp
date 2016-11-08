@@ -541,8 +541,10 @@ bool flat_win(state gen_board[8][8], float &value) {
         value += (float)(my_count/(float)(my_count + your_count));
     else if(my_count < your_count)
         value -= (float)(your_count/(float)(my_count + your_count));
-    else
-        value += 0.1; 
+    else {
+        cerr<<"Returning 0.0001 from flat win"<<endl;
+        value += 0.0001; 
+    }
     return true;
 }
 
@@ -1051,16 +1053,6 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     else
         current_player = 0;
 
-    // Operations
-    if(depth == 0) {
-        // number_called_get_heuristic++;
-        // func_begin_time=clock();
-        double value_heur= get_heuristic(myboard,false);
-        // func_end_time=clock();
-        // time_get_heuristic += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
-        return value_heur;
-    }
-
     if(minimum) {
         if(player_id == 1) 
             move_player = 2;
@@ -1113,6 +1105,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
         if(depth != 1)
             values.push_back(std::make_pair(val, all_moves[i]));
         else if(minimum) {
+            best_called++;
             child = val;
             beta = min(beta, child);
             min_val = min(child, min_val);
@@ -1120,6 +1113,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
                 best_move_chosen = all_moves[i];
         }
         else {
+            best_called++;
             child = val;
             alpha = max(alpha, child);
             max_val = max(child, max_val);
@@ -1165,8 +1159,6 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
                 child = LONG_MAX;
             else if(heur_val == LONG_MIN)
                 child = LONG_MIN;
-            else if(depth == 1)
-                child = heur_val; 
             else
                 child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum); 
             beta = min(beta, child);
@@ -1212,8 +1204,6 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
                 child = LONG_MAX;
             else if(heur_val == LONG_MIN)
                 child = LONG_MIN;
-            else if(depth == 1)
-                child = heur_val; 
             else
                 child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum); 
             alpha = max(alpha, child);
@@ -1290,6 +1280,8 @@ int get_score(state Board[8][8], bool winner) {
                 count1++;
         }
     }
+    count1 += cur_player.no_flat;
+    count2 += other_player.no_flat;
     if(winner)
         return count1;
     else
@@ -1309,8 +1301,8 @@ int main(int argc, char** argv) {
     mapping[1] = standing;
     mapping[2] = capstone;
     
-   // myval = stof(argv[1]);
-    myval = 25;
+    // myval = strtod(argv[1], NULL);
+    myval = 24;
     srand(time(NULL));
 
     // Clock variables
@@ -1327,7 +1319,7 @@ int main(int argc, char** argv) {
     begin_time = clock();
 
     board_size = n;
-    init_zobrist();
+    // init_zobrist();
     cur_player.assign(board_size);
     other_player.assign(board_size);
     for(int i = 0; i < board_size; i++)
@@ -1390,8 +1382,10 @@ int main(int argc, char** argv) {
             double val;
             int limit = 6;
             cerr<<"\nCount is "<<count<<endl;
-            if(time_limit - time_player < 15)
+            if(time_limit - time_player < 8)
                 limit = 4;
+            else if(time_limit - time_player < 22)
+                limit = 5;
             for(int i = 1; i <= limit; i++) {
                 best_called = 0;
                 ids_start = clock();
@@ -1464,8 +1458,10 @@ int main(int argc, char** argv) {
             cerr<<"\nCount is "<<count<<endl;
             count++;
             int limit = 6;
-            if(time_limit - time_player < 15)
+            if(time_limit - time_player < 8)
                 limit = 4;
+            else if(time_limit - time_player < 22)
+                limit = 5;
             for(int i = 2; i <= limit; i++) {
                 best_called = 0;
                 ids_start = clock();
