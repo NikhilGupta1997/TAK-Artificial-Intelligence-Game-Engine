@@ -93,6 +93,14 @@ static int repeated = 0;
 static uint64_t zobrist_table[300000][6];
 static uint64_t global_hash = 0;
 
+int temp_size;// = gen_board[i][j].state_stack.size();
+int stack_size;// = min(temp_size, board_size);
+int dist_up ;//= i;
+int dist_down ;//= board_size - 1 - i;
+int dist_left ;//= j; 
+int dist_right ;//= board_size - 1 - j;
+vector< vector<int> > part_list;
+
 class storage {
   public:
     float value;
@@ -851,13 +859,13 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                 }
             }
             else if(capt >= 3*index && capt < 3 + 3*index){
-                int temp_size = gen_board[i][j].state_stack.size();
-                int stack_size = min(temp_size, board_size);
-                int dist_up = i;
-                int dist_down = board_size - 1 - i;
-                int dist_left = j; 
-                int dist_right = board_size - 1 - j;
-                vector< vector<int> > part_list;
+                temp_size = gen_board[i][j].state_stack.size();
+                stack_size = min(temp_size, board_size);
+                dist_up = i;
+                dist_down = board_size - 1 - i;
+                dist_left = j; 
+                dist_right = board_size - 1 - j;
+                
 
                 for(int x = 1; x <= stack_size; x++) {
                     part_list = partition(x);
@@ -873,7 +881,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                             int z1 = -1;
                             for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i-z-1][j].captured;
-                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1)
+                                if(curr_capt % 3 == 0 || curr_capt == -1)
                                     move += (char)(48+part_list[y][z]);
                                 else {
                                     valid = false;
@@ -884,7 +892,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                             int z = part_size-1;
                             curr_capt = gen_board[i-z-1][j].captured;
                             if(z1 == z)
-                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)) {
+                                if((part_list[y][z] == 1) && ((curr_capt % 3 == 1) ) && (capt == 2 + index*3)) {
                                         move += "1";
                                         valid = true;
                                 }
@@ -903,7 +911,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                             int z1 = -1;
                             for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i+z+1][j].captured;
-                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1)
+                                if(curr_capt % 3 == 0 || curr_capt == -1)
                                     move += (char)(48+part_list[y][z]); 
                                 else {
                                     valid = false;
@@ -914,7 +922,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                             int z = part_size-1;
                             curr_capt = gen_board[i+z+1][j].captured;
                             if(z1 == z)
-                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)) {
+                                if((part_list[y][z] == 1) && (curr_capt % 3 == 1) && (capt == 2 + index*3)) {
                                         move += "1";
                                         valid = true;
                                     }
@@ -933,7 +941,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                             int z1 = -1;
                             for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i][j-z-1].captured;
-                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1)
+                                if(curr_capt % 3 == 0 || curr_capt == -1)
                                     move += (char)(48+part_list[y][z]);  
                                 else {
                                     valid = false;
@@ -944,7 +952,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                             int z = part_size-1;
                             curr_capt = gen_board[i][j-z-1].captured;
                             if(z1 == z)
-                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)) {
+                                if((part_list[y][z] == 1) && (curr_capt % 3 == 1) && (capt == 2 + index*3)) {
                                         move += "1";
                                         valid = true;
                                     } 
@@ -963,7 +971,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                             int z1 = -1;
                             for(int z = 0; z < part_size; z++){
                                 curr_capt = gen_board[i][j+z+1].captured;
-                                if(curr_capt == 0 || curr_capt == 3 || curr_capt == -1)
+                                if(curr_capt % 3 == 0 || curr_capt == -1)
                                     move += (char)(48+part_list[y][z]); 
                                 else {
                                     valid = false;
@@ -974,7 +982,7 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                             int z = part_size-1;
                             curr_capt = gen_board[i][j+z+1].captured;
                             if(z1 == z)
-                                if((part_list[y][z] == 1) && ((curr_capt == 1) || (curr_capt == 4)) && (capt == 2 + index*3)) {
+                                if((part_list[y][z] == 1) && (curr_capt % 3 == 1) && (capt == 2 + index*3)) {
                                         move += "1";
                                         valid = true;
                                     }
@@ -1301,8 +1309,8 @@ int main(int argc, char** argv) {
     mapping[1] = standing;
     mapping[2] = capstone;
     
-    myval = stof(argv[1]);
-    // myval = 0.9;
+   // myval = stof(argv[1]);
+    myval = 25;
     srand(time(NULL));
 
     // Clock variables
