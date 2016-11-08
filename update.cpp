@@ -18,7 +18,7 @@ using namespace std;
 
 int main(int argc, char** argv) {
 	srand(time(NULL));
-	float diff = 0.02;
+	float diff = 5;
 	float val1 = stof(argv[1]);
 	float val2 = stof(argv[2]);
 	int countme = stoi(argv[3]);

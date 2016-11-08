@@ -66,7 +66,7 @@ static clock_t func_begin_time;
 static clock_t func_end_time;
 static clock_t ids_start;
 static clock_t ids_end;
-static float time_threshold = 20;
+static float time_threshold = 8;
 
 static float time_get_heuristic = 0.0;
 static float time_influence = 0.0;
@@ -732,7 +732,7 @@ double get_heuristic(state gen_board[8][8], bool debug) {
                 wall_disadvantage = (wall_capt_me*for_wall + wall_capt_you*against_wall - diff[-1*capt_diff]*(wall_capt_me + wall_capt_you));
             else
                 wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*for_wall;
-            composition_value += capture_advantage - capture_disadvantage - myval*wall_disadvantage;
+            composition_value += capture_advantage - capture_disadvantage - 0.9*wall_disadvantage;
             
             // CENTER CONTROL
             if(i < board_size)
@@ -749,8 +749,8 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             piece_val += 60;
 
         // See how many flatstones left
-        piece_val -= 22*cur_player.no_flat;
-        piece_val += 22*other_player.no_flat;
+        piece_val -= myval*cur_player.no_flat;
+        piece_val += myval*other_player.no_flat;
 
     // INFLUENCE
         double infl_value = 0;
@@ -848,18 +848,6 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                     move += (char)(49+i);
                     all_moves[size] = move; 
                     size++;
-                    move = "S" ; 
-                    move += (char)(97+j); 
-                    move += (char)(49+i);
-                    all_moves[size] = move; 
-                    size++;                           
-                }
-                if(myplayer.capstone != 0) {
-                    move = "C" ; 
-                    move += (char)(97+j); 
-                    move += (char)(49+i);
-                    all_moves[size] = move; 
-                    size++;                            
                 }
             }
             else if(capt >= 3*index && capt < 3 + 3*index){
@@ -996,6 +984,34 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+    for(int i = 0; i < board_size; i++) {
+        for(int j = 0; j < board_size; j++) {
+            capt = gen_board[i][j].captured;
+            if(capt == -1){
+                if(myplayer.capstone != 0) {
+                    move = "C" ; 
+                    move += (char)(97+j); 
+                    move += (char)(49+i);
+                    all_moves[size] = move; 
+                    size++;                            
+                }
+            }
+        }
+    }
+    for(int i = 0; i < board_size; i++) {
+        for(int j = 0; j < board_size; j++) {
+            capt = gen_board[i][j].captured;
+            if(capt == -1){
+                if(myplayer.no_flat != 0) {                            
+                    move = "S" ; 
+                    move += (char)(97+j); 
+                    move += (char)(49+i);
+                    all_moves[size] = move; 
+                    size++;                           
                 }
             }
         }
@@ -1277,7 +1293,7 @@ int main(int argc, char** argv) {
     diff[1] = 25+10;
     diff[2] = 55+20;
     diff[3] = 85+30;
-    diff[4] = 120+45;
+    diff[4] = 120+40;
     diff[5] = 200+110;
     diff[6] = 155;
     diff[7] = 206;
@@ -1326,8 +1342,8 @@ int main(int argc, char** argv) {
             randmove = rand()%temp_size;
         // string_to_move_cur(all_moves[randmove], 1, Board, crush, false);
         // cout<<all_moves[randmove]<<endl;
-        string_to_move_cur(all_moves[9], 1, Board, crush, false);
-        cout<<all_moves[9]<<endl;
+        string_to_move_cur(all_moves[3], 1, Board, crush, false);
+        cout<<all_moves[3]<<endl;
         end_time = clock();
         time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
         // print_board(Board);       
@@ -1366,8 +1382,8 @@ int main(int argc, char** argv) {
             double val;
             int limit = 6;
             cerr<<"\nCount is "<<count<<endl;
-            if(time_limit - time_player < 20 || count < 6)
-                limit = 6;
+            if(time_limit - time_player < 15)
+                limit = 4;
             for(int i = 1; i <= limit; i++) {
                 best_called = 0;
                 ids_start = clock();
@@ -1378,6 +1394,8 @@ int main(int argc, char** argv) {
                 cerr<<"\ttime taken = "<<time;
                 cerr<<"\teffective branching factor = "<<pow(best_called,(1.0/(i+1)));
                 cerr<<"\tnodes = "<<best_called<<endl;
+                if(time > time_threshold/pow(best_called,(1.0/(i+1))))
+                    break;
             }
             // cerr<<"Repeated "<<repeated<<" out of "<<best_called<<endl;
             repeated = 0;
@@ -1438,8 +1456,8 @@ int main(int argc, char** argv) {
             cerr<<"\nCount is "<<count<<endl;
             count++;
             int limit = 6;
-            if(time_limit - time_player < 20 || count < 6)
-                limit = 6;
+            if(time_limit - time_player < 15)
+                limit = 4;
             for(int i = 2; i <= limit; i++) {
                 best_called = 0;
                 ids_start = clock();
@@ -1450,6 +1468,8 @@ int main(int argc, char** argv) {
                 cerr<<"\ttime taken = "<<time;
                 cerr<<"\teffective branching factor = "<<pow(best_called,(1.0/(i+1)));
                 cerr<<"\tnodes = "<<best_called<<endl;
+                if(time > time_threshold/pow(best_called,(1.0/(i+1))))
+                    break;
             }
             string_to_move_cur(next_move, 1, Board, crush, false);
             // print_board(Board);

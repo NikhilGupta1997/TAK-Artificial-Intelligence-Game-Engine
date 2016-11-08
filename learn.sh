@@ -1,6 +1,6 @@
 #!/bin/bash
-val1=0.8
-val2=0.6
+val1=30
+val2=20
 > log.txt
 while : 
 do
@@ -36,7 +36,7 @@ do
             line3=`grep 'loser' me$i.txt`
             line4=`grep 'loser' you$i.txt`
             if [ -z "$line1" ]; then
-                sleep 3s
+                sleep 2s
             else
                 echo first WINS
                 score_me=`grep 'Scorewin' me$i.txt | awk '{print$2}'`
@@ -48,7 +48,7 @@ do
                 break
             fi
             if [ -z "$line4" ]; then
-                sleep 3s
+                sleep 2s
             else
                 echo first WINS
                 score_me=`grep 'Scorewin' you$i.txt | awk '{print$2}'`
@@ -60,7 +60,7 @@ do
                 break
             fi
             if [ -z "$line2" ]; then
-                sleep 3s
+                sleep 2s
             else
                 echo second WINS
                 score_you=`grep 'Scorewin' you$i.txt | awk '{print$2}'`
@@ -72,7 +72,7 @@ do
                 break
             fi
             if [ -z "$line3" ]; then
-                sleep 3s 
+                sleep 2s 
             else
                 echo second WINS
                 score_you=`grep 'Scorewin' me$i.txt | awk '{print$2}'`
