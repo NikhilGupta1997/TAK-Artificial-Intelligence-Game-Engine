@@ -17,89 +17,89 @@
 
 using namespace std;
 
-#define MAX_BOARD_SIZE 8 
-#define Hash_size 124000000 
+    #define MAX_BOARD_SIZE 8 
+    #define Hash_size 124000000 
 
-static int max_height = 60;
+    static int max_height = 60;
 
-// Some cout variables
-static int prune = 0;
-static int best_called = 0;
+    // Some cout variables
+    static int prune = 0;
+    static int best_called = 0;
 
-// Evaluation function variables
-static double capstone = 90;
-static double flatstone = 75;
-static double standing = 50;
-static double cap_threat = 40;
-static double stand_threat = 40; 
+    // Evaluation function variables
+    static double capstone = 90;
+    static double flatstone = 75;
+    static double standing = 50;
+    static double cap_threat = 40;
+    static double stand_threat = 40; 
 
-static double mapping[3];
-static double diff[8];
-static float infl[8][8];
-static int neighbors[1000];
-static int temp_board[8][8];
-static string all_moves[5000];
+    static double mapping[3];
+    static double diff[8];
+    static float infl[8][8];
+    static int neighbors[1000];
+    static int temp_board[8][8];
+    static string all_moves[5000];
 
-// Define some global arrays
-static int player_id;
-static int board_size;
-static int current_player;
+    // Define some global arrays
+    static int player_id;
+    static int board_size;
+    static int current_player;
 
-//get_heuristic variables
-static double heuristic_value = 0.0;
-static double captured = 0.0;
-static double threats = 0.0;
-static double piece_val = 0.0;
+    //get_heuristic variables
+    static double heuristic_value = 0.0;
+    static double captured = 0.0;
+    static double threats = 0.0;
+    static double piece_val = 0.0;
 
-static float composition_value = 0.0;
-static int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
-static int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
-static int capt_diff;
-static float against_wall = 40, for_wall = 10;
-static float capture_advantage = 0.0;
-static float capture_disadvantage = 0.0;
-static float wall_disadvantage = 0.0;
-static float center_weight = 5;
-static float center_value = 0.0;
+    static float composition_value = 0.0;
+    static int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
+    static int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
+    static int capt_diff;
+    static float against_wall = 40, for_wall = 10;
+    static float capture_advantage = 0.0;
+    static float capture_disadvantage = 0.0;
+    static float wall_disadvantage = 0.0;
+    static float center_weight = 5;
+    static float center_value = 0.0;
 
-static clock_t func_begin_time;
-static clock_t func_end_time;
-static clock_t ids_start;
-static clock_t ids_end;
-static float time_threshold = 8;
+    static clock_t func_begin_time;
+    static clock_t func_end_time;
+    static clock_t ids_start;
+    static clock_t ids_end;
+    static float time_threshold = 8;
 
-static float time_get_heuristic = 0.0;
-static float time_influence = 0.0;
-static float time_generate_moves = 0.0;
-static float time_execute_moves = 0.0;
-static float time_undo_moves = 0.0;
-static float time_end_states = 0.0;
+    static float time_get_heuristic = 0.0;
+    static float time_influence = 0.0;
+    static float time_generate_moves = 0.0;
+    static float time_execute_moves = 0.0;
+    static float time_undo_moves = 0.0;
+    static float time_end_states = 0.0;
 
-static int number_called_get_heuristic = 0;
-static int number_called_influence = 0;
-static int number_called_generate_moves = 0;
-static int number_called_execute_moves = 0;
-static int number_called_undo_moves = 0;
-static int number_called_end_states = 0;
+    static int number_called_get_heuristic = 0;
+    static int number_called_influence = 0;
+    static int number_called_generate_moves = 0;
+    static int number_called_execute_moves = 0;
+    static int number_called_undo_moves = 0;
+    static int number_called_end_states = 0;
 
-static int top1 = 0;
-static int left1 = 0;
-static int bottom1 = 0;
-static int right1 = 0;
+    static int top1 = 0;
+    static int left1 = 0;
+    static int bottom1 = 0;
+    static int right1 = 0;
 
-static float myval;
-static int repeated = 0;
+    static float myval;
+    static int repeated = 0;
 
-static uint64_t zobrist_table[300000][6];
-static uint64_t global_hash = 0;
+    static uint64_t zobrist_table[300000][6];
+    static uint64_t global_hash = 0;
 
-int temp_size;// = gen_board[i][j].state_stack.size();
-int stack_size;// = min(temp_size, board_size);
-int dist_up ;//= i;
-int dist_down ;//= board_size - 1 - i;
-int dist_left ;//= j; 
-int dist_right ;//= board_size - 1 - j;
-vector< vector<int> > part_list;
+    int temp_size;// = gen_board[i][j].state_stack.size();
+    int stack_size;// = min(temp_size, board_size);
+    int dist_up ;//= i;
+    int dist_down ;//= board_size - 1 - i;
+    int dist_left ;//= j; 
+    int dist_right ;//= board_size - 1 - j;
+    vector< vector<int> > part_list;
 
 class storage {
   public:
@@ -621,7 +621,7 @@ void print_board(state Board[8][8]) {
         for(int j = 0; j < board_size; j++) {
             stack<int> temp(Board[i][j].state_stack);
             if(temp.size() == 0) {
-                cerr<<"-1";
+                cerr<<"-1       ";
                 continue;
             }  
             while(temp.size()!=0) {
@@ -629,7 +629,7 @@ void print_board(state Board[8][8]) {
                 temp.pop();
                 cerr<<x<<":";
             }
-            cerr<<" ";
+            cerr<<"       ";
         }
         cerr<<endl;
     }
@@ -772,9 +772,9 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             for(int j = 0; j < board_size; j++){
                 int temp = infl[i][j];
                 if(temp > 0)
-                    infl_value += temp*temp;
+                    infl_value += pow(temp,1.6);
                 else
-                    infl_value -= temp*temp;
+                    infl_value -= pow(-temp,1.6);
             }
         }
 
@@ -828,7 +828,17 @@ double get_heuristic(state gen_board[8][8], bool debug) {
         else if(current_player == 1)
             move_advantage += 250;
 
-    heuristic_value = move_advantage + 1.15*captured + 1.5*composition_value + piece_val + 0.95*infl_value + center_value;//*stack_size_value;// + 0.1*stack_composition_value;   
+    heuristic_value = move_advantage + 1.4*captured + 1.55*composition_value + piece_val + 0.9*infl_value + 0.5*center_value;//*stack_size_value;// + 0.1*stack_composition_value;   
+     if(debug)
+    {
+        cerr<<"The value of heuristic is "<<heuristic_value<<endl;
+        cerr<<"The Move Advantage is "<<move_advantage<<endl;
+        cerr<<"The Captured is "<<captured<<" , "<<1.4*captured<<endl;
+        cerr<<"The Composition Value is "<<composition_value<<" , "<<1.55*composition_value<<endl;
+        cerr<<"The Piece value is "<<piece_val<<endl;
+        cerr<<"The Influence Value is "<<infl_value<<" , "<<0.9*infl_value<<endl;
+        cerr<<"The Centre Value is "<<center_value<<endl;
+    }
     return heuristic_value;
 }
 
@@ -1505,7 +1515,7 @@ int main(int argc, char** argv) {
             cin>>move;
             begin_time = clock();
             string_to_move_cur(move, 2, Board, crush, false);
-            // print_board(Board);
+            print_board(Board);
             endstate_val = at_endstate(Board,debug);
             if(endstate_val > 0.0){
                 cerr<<"You are the winner"<<endl;
