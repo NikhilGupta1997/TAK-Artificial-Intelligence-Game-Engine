@@ -58,6 +58,8 @@ using namespace std;
     static float against_wall = 40, for_wall = 10;
     static float capture_advantage = 0.0;
     static float capture_disadvantage = 0.0;
+    static float capture_delta = 0.0;
+
     static float wall_disadvantage = 0.0;
     static float center_weight = 5;
     static float center_value = 0.0;
@@ -516,7 +518,7 @@ void reset_visited(int matrix[8][8]) {
     }
 }
 
-bool flat_win(state gen_board[8][8], float &value) {
+bool flat_win(state gen_board[8][8], float &value, bool debug) {
     float my_count = 0;
     float your_count = 0;
     int capt;
@@ -524,6 +526,7 @@ bool flat_win(state gen_board[8][8], float &value) {
     int cur_player_count = cur_player.no_flat;// + cur_player.capstone;
     int other_player_count = other_player.no_flat;// + other_player.capstone;
     if(cur_player_count == 0 || other_player_count == 0) {
+        if(debug)    cerr<<"Count is zero "<<cur_player_count<<","<<other_player_count<<endl;
         flag = true;
     }
     for(int i = 0; i < board_size; i++) {
@@ -537,12 +540,18 @@ bool flat_win(state gen_board[8][8], float &value) {
                 your_count++;
         }
     }
+    if(!flag && debug ) {
+        cerr<<"Flat win due to board being filled"<<endl;
+    }
+    // Should not we add the remaining ones as well
+    // Carefully check this one out
     if(my_count > your_count)
         value += (float)(my_count/(float)(my_count + your_count));
     else if(my_count < your_count)
-        value -= (float)(your_count/(float)(my_count + your_count));
+      // wrong  value -= (float)(your_count/(float)(my_count + your_count));
+        value -= (float)(my_count/(float)(my_count + your_count));
     else {
-      //  cerr<<"Returning 0.0001 from flat win"<<endl;
+       if(debug) cerr<<"Returning 0.0001 from flat win"<<endl;
         value += 0.0001; 
     }
     return true;
@@ -609,7 +618,7 @@ double at_endstate(state gen_board[8][8],int debug) {
     }
 
     float flat_val = 0.0;
-    bool flat_win_check = flat_win(gen_board,flat_val);
+    bool flat_win_check = flat_win(gen_board,flat_val,debug);
     if(!flat_win_check)
         return 0.0;
     else 
@@ -735,14 +744,18 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             capt_diff = my_capt - your_capt;
             capture_advantage = diff[my_capt];
             capture_disadvantage = diff[your_capt];
-
-            if(capt_diff > 0)
+            capture_delta = 0.0;// + 5.0* (max(your_capt, my_capt)-1)/();
+            if(capt_diff > 0){
+                capture_delta = diff[capt_diff] + 5.0 * (my_capt-1) ;
                 wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*against_wall + diff[capt_diff]*(wall_capt_me + wall_capt_you);
-            else if(capt_diff < 0)
+            }
+            else if(capt_diff < 0){
+                 capture_delta = diff[-capt_diff] - 5.0 * (your_capt-1) ;
                 wall_disadvantage = (wall_capt_me*for_wall + wall_capt_you*against_wall - diff[-1*capt_diff]*(wall_capt_me + wall_capt_you));
+            }
             else
                 wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*for_wall;
-            composition_value += capture_advantage - capture_disadvantage - 0.9*wall_disadvantage;
+            composition_value += capture_advantage - capture_disadvantage - 0.7*wall_disadvantage;
             
             // CENTER CONTROL
             if(i < board_size)
@@ -759,8 +772,8 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             piece_val += 60;
 
         // See how many flatstones left
-        piece_val -= myval*cur_player.no_flat;
-        piece_val += myval*other_player.no_flat;
+        piece_val -= 24*cur_player.no_flat;
+        piece_val += 24*other_player.no_flat;
 
     // INFLUENCE
         double infl_value = 0;
@@ -772,9 +785,9 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             for(int j = 0; j < board_size; j++){
                 int temp = infl[i][j];
                 if(temp > 0)
-                    infl_value += pow(temp,1.6);
+                    infl_value += pow(temp,1.5);
                 else
-                    infl_value -= pow(-temp,1.6);
+                    infl_value -= pow(-temp,1.5);
             }
         }
 
@@ -1169,6 +1182,20 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
                 child = LONG_MAX;
             else if(heur_val == LONG_MIN)
                 child = LONG_MIN;
+            else if(heur_val > LONG_MAX/100 )
+            {
+                if(get_heuristic(myboard, false) < 700) // to check if flat win or not
+                    child = heur_val;
+                else
+                    child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum);
+            }
+            else if(heur_val < LONG_MIN/100)
+            {
+                if(get_heuristic(myboard, false) > -700) // to check if flat win or not
+                    child = heur_val;
+                else
+                    child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum);
+            }
             else
                 child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum); 
             beta = min(beta, child);
@@ -1214,6 +1241,20 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
                 child = LONG_MAX;
             else if(heur_val == LONG_MIN)
                 child = LONG_MIN;
+            else if(heur_val > LONG_MAX/100 )
+            {
+                if(get_heuristic(myboard, false) < 700) // to check if flat win or not
+                    child = heur_val;
+                else
+                    child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum);
+            }
+            else if(heur_val < LONG_MIN/100)
+            {
+                if(get_heuristic(myboard, false) > -700) // to check if flat win or not
+                    child = heur_val;
+                else
+                    child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum);
+            }
             else
                 child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum); 
             alpha = max(alpha, child);
@@ -1470,7 +1511,7 @@ int main(int argc, char** argv) {
             int limit = 6;
             if(time_limit - time_player < 8)
                 limit = 4;
-            else if(time_limit - time_player < 22)
+            else if(time_limit - time_player < 42)
                 limit = 5;
             for(int i = 2; i <= limit; i++) {
                 best_called = 0;
