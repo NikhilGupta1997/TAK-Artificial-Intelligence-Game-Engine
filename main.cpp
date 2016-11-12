@@ -746,16 +746,16 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             capture_disadvantage = diff[your_capt];
             capture_delta = 0.0;// + 5.0* (max(your_capt, my_capt)-1)/();
             if(capt_diff > 0){
-                capture_delta = diff[capt_diff] + 5.0 * (my_capt-1) ;
+                capture_delta =  5.0 * (my_capt-1) ;
                 wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*against_wall + diff[capt_diff]*(wall_capt_me + wall_capt_you);
             }
             else if(capt_diff < 0){
-                 capture_delta = diff[-capt_diff] - 5.0 * (your_capt-1) ;
+                 capture_delta =  -5.0 * (your_capt-1) ;
                 wall_disadvantage = (wall_capt_me*for_wall + wall_capt_you*against_wall - diff[-1*capt_diff]*(wall_capt_me + wall_capt_you));
             }
             else
                 wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*for_wall;
-            composition_value += capture_advantage - capture_disadvantage - 0.7*wall_disadvantage;
+            composition_value += capture_advantage - capture_disadvantage +capture_delta - 0.9*wall_disadvantage;
             
             // CENTER CONTROL
             if(i < board_size)
