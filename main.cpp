@@ -542,7 +542,7 @@ bool flat_win(state gen_board[8][8], float &value) {
     else if(my_count < your_count)
         value -= (float)(your_count/(float)(my_count + your_count));
     else {
-        cerr<<"Returning 0.0001 from flat win"<<endl;
+      //  cerr<<"Returning 0.0001 from flat win"<<endl;
         value += 0.0001; 
     }
     return true;
@@ -821,14 +821,14 @@ double get_heuristic(state gen_board[8][8], bool debug) {
     //         }
     //     }
 
-    // MOVE ADVANTAGE
+    // MOVE ADVANTAGE -- working quite well
         double move_advantage = 0.0;
         if(current_player == -1)
             move_advantage -= 250;
         else if(current_player == 1)
             move_advantage += 250;
 
-    heuristic_value = move_advantage + 1.4*captured + 1.55*composition_value + piece_val + 0.9*infl_value + 0.5*center_value;//*stack_size_value;// + 0.1*stack_composition_value;   
+    heuristic_value = move_advantage + 1.4*captured + 1.55*composition_value + piece_val + 0.9*infl_value + 1.1*center_value;//*stack_size_value;// + 0.1*stack_composition_value;   
      if(debug)
     {
         cerr<<"The value of heuristic is "<<heuristic_value<<endl;
@@ -1302,11 +1302,11 @@ int main(int argc, char** argv) {
     diff[0] = 0;
     diff[1] = 25+10;
     diff[2] = 55+20;
-    diff[3] = 85+30;
-    diff[4] = 120+40;
-    diff[5] = 200+110;
-    diff[6] = 155;
-    diff[7] = 206;
+    diff[3] = 85+35;
+    diff[4] = 120+50;
+    diff[5] = 200+35;
+    diff[6] = 285;
+    diff[7] = 400;
     mapping[0] = flatstone;
     mapping[1] = standing;
     mapping[2] = capstone;
