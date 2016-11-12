@@ -564,59 +564,111 @@ void initialise() {
     right1 = 0;
 }
 
-double at_endstate(state gen_board[8][8],int debug) {
+double at_endstate(state gen_board[8][8],int debug,bool score, int move){
     bool road = false;
     reset_visited(temp_board);
-    for(int i = 0; i < board_size; i++) {
-        int capt_i = gen_board[i][0].captured;
-        if((capt_i == 0 || capt_i == 2) && (temp_board[i][0] == 0)) {
-            temp_board[i][0] = 1;
-            if(i == 0) 
+    if(move == 0) {
+        for(int i = 0; i < board_size; i++) {
+            int capt_i = gen_board[i][0].captured;
+            if((capt_i == 0 || capt_i == 2) && (temp_board[i][0] == 0)) {
+                temp_board[i][0] = 1;
+                if(i == 0) 
+                    top1 = 1;
+                left1 = 1;
+                road = DFS(i, 0, temp_board, 0, gen_board, 0);
+                initialise();
+                if(road)
+                    return 10.0;
+            }
+        }
+        for(int j = 1; j < board_size; j++) {
+            int capt_j = gen_board[0][j].captured;
+            if((capt_j == 0 || capt_j == 2) && (temp_board[0][j] == 0)) {
+                temp_board[0][j] = 1;
                 top1 = 1;
-            left1 = 1;
-            road = DFS(i, 0, temp_board, 0, gen_board, 0);
-            initialise();
-            if(road)
-                return 10.0;
+                road = DFS(0, j, temp_board, 0, gen_board, 0);
+                initialise();
+                if(road)
+                    return 10.0;
+            }
+        }
+        reset_visited(temp_board);
+        for(int i = 0; i < board_size; i++) {
+            int capt_i = gen_board[i][0].captured;
+            if((capt_i == 3 || capt_i == 5) && (temp_board[i][0] == 0)) {
+                temp_board[i][0] = 1;
+                if(i == 0) 
+                    top1 = 1;
+                left1 = 1;
+                road = DFS(i, 0, temp_board, 1, gen_board, 0);
+                initialise();
+                if(road)
+                    return -10.0;
+            } 
+        }
+        for(int j = 1; j < board_size; j++) {
+            int capt_j = gen_board[0][j].captured;
+            if((capt_j == 3 || capt_j == 5) && (temp_board[0][j] == 0)) {
+                temp_board[0][j] = 1;
+                top1 = 1;
+                road = DFS(0, j, temp_board,  1, gen_board, 0);
+                initialise();
+                if(road)
+                    return -10.0;
+            }    
         }
     }
-    for(int j = 1; j < board_size; j++) {
-        int capt_j = gen_board[0][j].captured;
-        if((capt_j == 0 || capt_j == 2) && (temp_board[0][j] == 0)) {
-            temp_board[0][j] = 1;
-            top1 = 1;
-            road = DFS(0, j, temp_board, 0, gen_board, 0);
-            initialise();
-            if(road)
-                return 10.0;
+    else {
+        for(int i = 0; i < board_size; i++) {
+            int capt_i = gen_board[i][0].captured;
+            if((capt_i == 3 || capt_i == 5) && (temp_board[i][0] == 0)) {
+                temp_board[i][0] = 1;
+                if(i == 0) 
+                    top1 = 1;
+                left1 = 1;
+                road = DFS(i, 0, temp_board, 1, gen_board, 0);
+                initialise();
+                if(road)
+                    return -10.0;
+            } 
+        }
+        for(int j = 1; j < board_size; j++) {
+            int capt_j = gen_board[0][j].captured;
+            if((capt_j == 3 || capt_j == 5) && (temp_board[0][j] == 0)) {
+                temp_board[0][j] = 1;
+                top1 = 1;
+                road = DFS(0, j, temp_board,  1, gen_board, 0);
+                initialise();
+                if(road)
+                    return -10.0;
+            }    
+        }
+        reset_visited(temp_board);
+        for(int i = 0; i < board_size; i++) {
+            int capt_i = gen_board[i][0].captured;
+            if((capt_i == 0 || capt_i == 2) && (temp_board[i][0] == 0)) {
+                temp_board[i][0] = 1;
+                if(i == 0) 
+                    top1 = 1;
+                left1 = 1;
+                road = DFS(i, 0, temp_board, 0, gen_board, 0);
+                initialise();
+                if(road)
+                    return 10.0;
+            }
+        }
+        for(int j = 1; j < board_size; j++) {
+            int capt_j = gen_board[0][j].captured;
+            if((capt_j == 0 || capt_j == 2) && (temp_board[0][j] == 0)) {
+                temp_board[0][j] = 1;
+                top1 = 1;
+                road = DFS(0, j, temp_board, 0, gen_board, 0);
+                initialise();
+                if(road)
+                    return 10.0;
+            }
         }
     }
-    reset_visited(temp_board);
-    for(int i = 0; i < board_size; i++) {
-        int capt_i = gen_board[i][0].captured;
-        if((capt_i == 3 || capt_i == 5) && (temp_board[i][0] == 0)) {
-            temp_board[i][0] = 1;
-            if(i == 0) 
-                top1 = 1;
-            left1 = 1;
-            road = DFS(i, 0, temp_board, 1, gen_board, 0);
-            initialise();
-            if(road)
-                return -10.0;
-        } 
-    }
-    for(int j = 1; j < board_size; j++) {
-        int capt_j = gen_board[0][j].captured;
-        if((capt_j == 3 || capt_j == 5) && (temp_board[0][j] == 0)) {
-            temp_board[0][j] = 1;
-            top1 = 1;
-            road = DFS(0, j, temp_board,  1, gen_board, 0);
-            initialise();
-            if(road)
-                return -10.0;
-        }    
-    }
-
     float flat_val = 0.0;
     bool flat_win_check = flat_win(gen_board,flat_val,debug);
     if(!flat_win_check)
