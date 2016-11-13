@@ -565,7 +565,7 @@ void initialise() {
 double at_endstate(state gen_board[8][8],int debug,bool score, int move){
     bool road = false;
     reset_visited(temp_board);
-    if(move == 0) {
+    if(move == 0) { // For double win
         for(int i = 0; i < board_size; i++) {
             int capt_i = gen_board[i][0].captured;
             if((capt_i == 0 || capt_i == 2) && (temp_board[i][0] == 0)) {
@@ -805,7 +805,7 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             }
             else
                 wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*for_wall;
-            composition_value += capture_advantage - capture_disadvantage +capture_delta - 0.9*wall_disadvantage;
+            composition_value += capture_advantage - capture_disadvantage + capture_delta - 0.9*wall_disadvantage;
             
             // CENTER CONTROL
             if(i < board_size)
@@ -1100,7 +1100,65 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
         }
     }
 }
+static int win_score_rw = 0;
+static float count_loser_score_rw = 0.0 ;
+static float count_winner_score_rw = 0.0 ;
+static int capt_rw ;
+double score_road_win(state myboard[8][8], int los_player_id) // 0 means our player has lost
+{
+   // int player_id ;
+    //win_score_rw = 0;
+    count_loser_score_rw = 0.0;
+    count_winner_score_rw = board_size*board_size;
+   // capt_rw ;
 
+    for(int i=0;i<board_size;i++)
+    {
+        for(int j=0; j<board_size; j++)
+        {
+            capt_rw = myboard[i][j].captured;
+            if(capt_rw == 0 + (1-los_player_id)*3 ||capt_rw == 2 + (1-los_player_id)*3) // count of winner
+            {
+                count_winner_score_rw+= 1.0;
+            }
+            else if(capt_rw == 0 + (los_player_id)*3 ||capt_rw == 2 + (los_player_id)*3)
+            {
+                count_loser_score_rw+= 1.0 ;
+            }
+        }
+    }
+
+    if(player_id == 0)
+          count_winner_score_rw += other_player.no_flat;
+    else
+          count_winner_score_rw += cur_player.no_flat; 
+      double ans = (LONG_MAX/1000)* (float)count_loser_score_rw/(float)(count_winner_score_rw + count_loser_score_rw) ;
+    // cerr<< ans <<endl ;  
+    return ans;       
+    // if(player_id == 1) // we are white
+    // {
+    //     if(los_player_id == 0)
+    //     {
+
+    //     }
+    //     else
+    //     {
+
+    //     }    
+    // }
+    // else
+    // {
+    //     if(los_player_id == 0)
+    //     {
+
+    //     }
+    //     else
+    //     {
+            
+    //     }
+    // }    
+
+}
 double best_move(state myboard[8][8],double alpha,double beta,int depth,string &best_move_chosen,bool minimum) {
     // Declare Variables
     // if(depth>=3)
@@ -1161,10 +1219,13 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
         if(ans == 10.0) {
             // cerr<<"my road_win found"<<endl;
-            val = LONG_MAX;
+            //val = LONG_MAX - score_road_win(myboard,1);
+            val = LONG_MAX ;
         }
         else if(ans == -10.0) {
             // cerr<<"your road_win found"<<endl;
+            // val = LONG_MIN  + score_road_win(myboard,0);
+            // if(all_moves[i] == "Fe4") cerr<<"Detected loss with score"<< (val - LONG_MIN)<<"   .   "<<score_road_win(myboard,0)<<endl;
             val = LONG_MIN;
         }
         else if(ans == 0.0) {
@@ -1231,10 +1292,13 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
             string tmp = "";
-            if(heur_val == LONG_MAX)
-                child = LONG_MAX;
-            else if(heur_val == LONG_MIN)
-                child = LONG_MIN;
+           if(heur_val == LONG_MAX){
+                child = LONG_MAX - score_road_win(myboard,1);
+            }
+            else if(heur_val == LONG_MIN){
+                child = LONG_MIN  + score_road_win(myboard,0);
+                // if(move_taken == "Fe4") cerr<<"Detected loss with score "<< (child - LONG_MIN)<<endl;
+            }
             else if(heur_val > LONG_MAX/100 )
             {
                 if(get_heuristic(myboard, false) < 700) // to check if flat win or not
@@ -1290,10 +1354,13 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
             string tmp = "";
-            if(heur_val == LONG_MAX)
-                child = LONG_MAX;
-            else if(heur_val == LONG_MIN)
-                child = LONG_MIN;
+            if(heur_val == LONG_MAX){
+                child = LONG_MAX - score_road_win(myboard,1);
+            }
+            else if(heur_val == LONG_MIN){
+                child = LONG_MIN  + score_road_win(myboard,0);
+                // if(move_taken == "Fe4") cerr<<"Detected loss with score "<< (child - LONG_MIN)<<endl;
+            }
             else if(heur_val > LONG_MAX/100 )
             {
                 if(get_heuristic(myboard, false) < 700) // to check if flat win or not
@@ -1492,9 +1559,9 @@ int main(int argc, char** argv) {
             double val;
             int limit = 6;
             cerr<<"\nCount is "<<count<<endl;
-            if(time_limit - time_player < 8)
+            if(time_limit - time_player < 20)
                 limit = 4;
-            else if(time_limit - time_player < 22)
+            else if(time_limit - time_player < 42)
                 limit = 5;
             for(int i = 1; i <= limit; i++) {
                 best_called = 0;
@@ -1568,7 +1635,7 @@ int main(int argc, char** argv) {
             cerr<<"\nCount is "<<count<<endl;
             count++;
             int limit = 6;
-            if(time_limit - time_player < 8)
+            if(time_limit - time_player < 20)
                 limit = 4;
             else if(time_limit - time_player < 42)
                 limit = 5;
