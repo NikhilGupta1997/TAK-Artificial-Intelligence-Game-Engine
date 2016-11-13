@@ -516,7 +516,7 @@ void reset_visited(int matrix[8][8]) {
     }
 }
 
-bool flat_win(state gen_board[8][8], float &value, bool debug) {
+bool flat_win(state gen_board[8][8], double &value, bool debug) {
     float my_count = 0;
     float your_count = 0;
     int capt;
@@ -550,7 +550,8 @@ bool flat_win(state gen_board[8][8], float &value, bool debug) {
         value -= (float)(my_count/(float)(my_count + your_count));
     else {
        if(debug) cerr<<"Returning 0.0001 from flat win"<<endl;
-        value += 0.0001; 
+        value += 10/LONG_MAX; 
+       // cerr<<"The val "<<value<<endl;
     }
     return true;
 }
@@ -667,7 +668,7 @@ double at_endstate(state gen_board[8][8],int debug,bool score, int move){
             }
         }
     }
-    float flat_val = 0.0;
+    double flat_val = 0.0;
     bool flat_win_check = flat_win(gen_board,flat_val,debug);
     if(!flat_win_check)
         return 0.0;
@@ -796,11 +797,11 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             capture_disadvantage = diff[your_capt];
             capture_delta = 0.0;// + 5.0* (max(your_capt, my_capt)-1)/();
             if(capt_diff > 0){
-                capture_delta =  5.0 * (my_capt-1) ;
+              //  capture_delta =  5.0 * (my_capt-1) ;
                 wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*against_wall + diff[capt_diff]*(wall_capt_me + wall_capt_you);
             }
             else if(capt_diff < 0){
-                 capture_delta =  -5.0 * (your_capt-1) ;
+              //   capture_delta =  -5.0 * (your_capt-1) ;
                 wall_disadvantage = (wall_capt_me*for_wall + wall_capt_you*against_wall - diff[-1*capt_diff]*(wall_capt_me + wall_capt_you));
             }
             else
@@ -835,9 +836,9 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             for(int j = 0; j < board_size; j++){
                 int temp = infl[i][j];
                 if(temp > 0)
-                    infl_value += pow(temp,1.5);
+                    infl_value += pow(temp,1.53);
                 else
-                    infl_value -= pow(-temp,1.5);
+                    infl_value -= pow(-temp,1.53);
             }
         }
 
@@ -1237,7 +1238,10 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
         }
         else {
             // cerr<<"Flat win detected"<<endl;
-            val = ans*LONG_MAX;  
+            if(ans == LONG_MAX * 0.0001)
+                val = 0.0 ;
+            else
+                val = ans*LONG_MAX;  
         }
         if(depth != 1)
             values.push_back(std::make_pair(val, all_moves[i]));
@@ -1461,11 +1465,11 @@ int get_score(state Board[8][8], bool winner) {
 
 int main(int argc, char** argv) {
     diff[0] = 0;
-    diff[1] = 25+10;
-    diff[2] = 55+20;
-    diff[3] = 85+35;
-    diff[4] = 120+50;
-    diff[5] = 200+35;
+    diff[1] = 25+10; //35
+    diff[2] = 55+20; // 75
+    diff[3] = 85+35; // 120
+    diff[4] = 120+50;// 170
+    diff[5] = 200+35;// 
     diff[6] = 285;
     diff[7] = 400;
     mapping[0] = flatstone;
