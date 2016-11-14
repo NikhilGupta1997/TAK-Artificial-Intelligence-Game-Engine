@@ -25,6 +25,8 @@ using namespace std;
     // Some cout variables
     static int prune = 0;
     static int best_called = 0;
+    static int counter = 0;
+    static int last_heur_val = 0;
 
     // Evaluation function variables
     static double capstone = 90;
@@ -55,7 +57,7 @@ using namespace std;
     static int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
     static int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
     static int capt_diff;
-    static float against_wall = 40, for_wall = 10;
+    static float against_wall = 40, for_wall = 32;
     static float capture_advantage = 0.0;
     static float capture_disadvantage = 0.0;
     static float capture_delta = 0.0;
@@ -547,7 +549,7 @@ bool flat_win(state gen_board[8][8], double &value, bool debug) {
         value += (float)(my_count/(float)(my_count + your_count));
     else if(my_count < your_count)
       // wrong  value -= (float)(your_count/(float)(my_count + your_count));
-        value -= (float)(my_count/(float)(my_count + your_count));
+        value -= (float)(your_count/(float)(my_count + your_count));
     else {
        if(debug) cerr<<"Returning 0.0001 from flat win"<<endl;
         value += 10/LONG_MAX; 
@@ -781,6 +783,7 @@ double get_heuristic(state gen_board[8][8], bool debug) {
         }
 
     // SAME ROW PIECES HAS MORE WEIGHT
+        float wallFactor;
         composition_value = 0.0;
         center_value = 0.0;
         for(int i=0;i<2*board_size;i++){
@@ -796,17 +799,38 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             capture_advantage = diff[my_capt];
             capture_disadvantage = diff[your_capt];
             capture_delta = 0.0;// + 5.0* (max(your_capt, my_capt)-1)/();
+            if(board_size == 5) {
+                if(cur_player.id == 2 && last_heur_val < -200) {
+                    wallFactor = 0.7;
+                }
+                else
+                    wallFactor = 0.9;
+            }
+            if(board_size == 6) {
+                if(cur_player.id == 2 && last_heur_val < -200) {
+                    wallFactor = 0.7;
+                }
+                else
+                    wallFactor = 0.9;
+            }
+            if(board_size == 7) {
+                if(cur_player.id == 2 && last_heur_val < -200) {
+                    wallFactor = 0.7;
+                }
+                else
+                    wallFactor = 0.9;
+            }
             if(capt_diff > 0){
               //  capture_delta =  5.0 * (my_capt-1) ;
-                wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*against_wall + diff[capt_diff]*(wall_capt_me + wall_capt_you);
+                wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*against_wall + diff[capt_diff]*(wall_capt_me + wall_capt_you)*2/board_size;
             }
             else if(capt_diff < 0){
               //   capture_delta =  -5.0 * (your_capt-1) ;
-                wall_disadvantage = (wall_capt_me*for_wall + wall_capt_you*against_wall - diff[-1*capt_diff]*(wall_capt_me + wall_capt_you));
+                wall_disadvantage = (wall_capt_me*for_wall + wall_capt_you*against_wall - diff[-1*capt_diff]*(wall_capt_me + wall_capt_you)*2/board_size);
             }
             else
                 wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*for_wall;
-            composition_value += capture_advantage - capture_disadvantage + capture_delta - 0.9*wall_disadvantage;
+            composition_value += capture_advantage - capture_disadvantage + capture_delta - wallFactor*wall_disadvantage;
             
             // CENTER CONTROL
             if(i < board_size)
@@ -836,54 +860,11 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             for(int j = 0; j < board_size; j++){
                 int temp = infl[i][j];
                 if(temp > 0)
-                    infl_value += pow(temp,1.53);
+                    infl_value += pow(temp,1.5);
                 else
-                    infl_value -= pow(-temp,1.53);
+                    infl_value -= pow(-temp,1.5);
             }
         }
-
-    // // SIZE OF STACK HEURISTIC
-    //     double stack_size_value = 0;
-    //     float size_val = 1;
-    //     float power_size = 2.0;
-    //     for(int i = 0; i < board_size; i++){
-    //         for(int j = 0; j < board_size; j++){
-    //             int size_stack = gen_board[i][j].state_stack.size();
-    //             if(size_stack > 1){
-    //                 if(gen_board[i][j].captured >= 3)
-    //                     stack_size_value -= size_stack*size_stack*size_val;
-    //                 else
-    //                     stack_size_value += size_stack*size_stack*size_val;
-    //             }
-    //         }
-    //     }
-
-    // // COMPOSITION OF STACK HEURISTIC
-    //     double stack_composition_value = 0;
-    //     float comp_val = 1;
-    //     float comp_power = 2.0;
-    //     for(int i = 0; i < board_size; i++){
-    //         for(int j = 0; j < board_size; j++){
-    //             int size = gen_board[i][j].state_stack.size();
-    //             if(size > 1){
-    //                 stack<int> temp(gen_board[i][j].state_stack);
-    //                 int count_me = 0;
-    //                 for(int k = 0; k < size; k++){
-    //                     if(temp.top() < 3)
-    //                         count_me++;
-    //                     temp.pop();
-    //                 }
-    //                 if(count_me/size > 0.5)
-    //                     stack_composition_value += (count_me)*(1 - count_me/size)*comp_val*comp_val*size;
-    //                 else if (count_me/size < 0.5)
-    //                     stack_composition_value -= (count_me)*(1 - count_me/size)*comp_val*comp_val*size;
-    //                 else if(gen_board[i][j].captured >= 3)
-    //                     stack_composition_value -= size*size;
-    //                 else
-    //                     stack_composition_value += size*size;
-    //             }
-    //         }
-    //     }
 
     // MOVE ADVANTAGE -- working quite well
         double move_advantage = 0.0;
@@ -892,8 +873,14 @@ double get_heuristic(state gen_board[8][8], bool debug) {
         else if(current_player == 1)
             move_advantage += 250;
 
-    heuristic_value = move_advantage + 1.4*captured + 1.55*composition_value + piece_val + 0.9*infl_value + 1.1*center_value;//*stack_size_value;// + 0.1*stack_composition_value;   
-     if(debug)
+    if(board_size == 5)
+        heuristic_value = move_advantage + 1.4*captured + 1.55*composition_value + piece_val + 0.9*infl_value + 1.1*center_value; //1.1 fpr 5
+    else if(board_size == 6)
+        heuristic_value = move_advantage + 1.5*captured + 1*composition_value + piece_val + 0.9*infl_value + 0.5*center_value; //1.1 fpr 5
+    else
+        heuristic_value = move_advantage + 1.6*captured + 0.75*composition_value + piece_val + 0.9*infl_value + 0.2*center_value; //1.1 fpr 5
+
+    if(debug)
     {
         cerr<<"The value of heuristic is "<<heuristic_value<<endl;
         cerr<<"The Move Advantage is "<<move_advantage<<endl;
@@ -1205,6 +1192,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
         int crushed = 0;
      //    number_called_execute_moves++ ;
         // func_begin_time = clock();   
+        counter++;
         string_to_move_cur(all_moves[i], move_player, myboard, crushed, false);
      //    func_end_time = clock();
         // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
@@ -1265,6 +1253,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
      //    number_called_undo_moves++;
         // func_begin_time=clock();
         undo_move(all_moves[i], move_player, myboard, crushed, false);
+        counter--;
         // func_end_time = clock();
         // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
@@ -1291,6 +1280,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
          //    number_called_execute_moves++ ;
             // func_begin_time = clock();   
             uint64_t a1 = global_hash;
+            counter++;
             string_to_move_cur(move_taken, move_player, myboard, crushed, true);
       //       func_end_time = clock();
             // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
@@ -1327,6 +1317,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
       //       number_called_undo_moves++;
             // func_begin_time=clock();
             undo_move(move_taken, move_player, myboard, crushed,true);
+            counter--;
             // func_end_time = clock();
             // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
        
@@ -1353,6 +1344,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
 
    //          number_called_execute_moves++ ;
             // func_begin_time = clock();   
+            counter++;
             string_to_move_cur(move_taken, move_player, myboard, crushed,true);
       //       func_end_time = clock();
             // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
@@ -1389,6 +1381,7 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
       //       number_called_undo_moves++;
             // func_begin_time=clock();
             undo_move(move_taken, move_player, myboard, crushed,true);
+            counter--;
       //       func_end_time = clock();
             // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
        
@@ -1468,7 +1461,7 @@ int main(int argc, char** argv) {
     diff[1] = 25+10; //35
     diff[2] = 55+20; // 75
     diff[3] = 85+35; // 120
-    diff[4] = 120+50;// 170
+    diff[4] = 120+50;// 170 -- decrease
     diff[5] = 200+35;// 
     diff[6] = 285;
     diff[7] = 400;
@@ -1509,6 +1502,7 @@ int main(int argc, char** argv) {
         cin>>move;
         begin_time = clock();
         crush = 0;
+        counter++;
         string_to_move_cur(move, 2, Board, crush, false);
         // print_board(Board);
         generate_all_moves(1, Board, temp_size);
@@ -1518,12 +1512,14 @@ int main(int argc, char** argv) {
         // string_to_move_cur(all_moves[randmove], 1, Board, crush, false);
         // cout<<all_moves[randmove]<<endl;''
         if(Board[0][0].captured == -1){
+            counter++;
             string_to_move_cur(all_moves[0], 1, Board, crush, false);
             cout<<all_moves[0]<<endl;
         }
         else{
-        string_to_move_cur(all_moves[3], 1, Board, crush, false);
-        cout<<all_moves[3]<<endl;
+            counter++;
+            string_to_move_cur(all_moves[board_size-2], 1, Board, crush, false);
+            cout<<all_moves[board_size-2]<<endl;
         }
         end_time = clock();
         time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
@@ -1535,6 +1531,7 @@ int main(int argc, char** argv) {
             cin>>move;
             begin_time = clock();
             crush = 0;
+            counter++;
             string_to_move_cur(move, 1, Board, crush, false);
             crush = 0;
             // print_board(Board);
@@ -1583,6 +1580,7 @@ int main(int argc, char** argv) {
             // cerr<<"Repeated "<<repeated<<" out of "<<best_called<<endl;
             repeated = 0;
             //Transposition_Table.clear();
+            counter++;
             string_to_move_cur(next_move, 2, Board, crush, false);
             // print_board(Board);
             endstate_val = at_endstate(Board, debug, false,0);
@@ -1604,6 +1602,7 @@ int main(int argc, char** argv) {
             }
             current_player = 0;
             cerr<<"the heuristic value is = "<<get_heuristic(Board, true)<<","<<val<<endl;
+            last_heur_val = get_heuristic(Board, false);
             count++;
             cout<<next_move<<endl;
             end_time = clock();
@@ -1622,6 +1621,7 @@ int main(int argc, char** argv) {
         // string_to_move_cur(all_moves[randmove], 2, Board, crush, false);
         // cout<<all_moves[randmove]<<endl;
         cerr<<all_moves[0]<<" \n";
+        counter++;
         string_to_move_cur(all_moves[0], 2, Board, crush, false);
         cout<<all_moves[0]<<endl;
         end_time = clock();
@@ -1630,6 +1630,7 @@ int main(int argc, char** argv) {
         cerr<<endl;
         cin>>move;
         begin_time = clock();
+        counter++;
         string_to_move_cur(move, 1, Board, crush, false);
         int count = 0;
         while(on) {
@@ -1656,6 +1657,7 @@ int main(int argc, char** argv) {
                 if(time > time_threshold/pow(best_called,(1.0/(i+1))))
                     break;
             }
+            counter++;
             string_to_move_cur(next_move, 1, Board, crush, false);
             print_board(Board);
             endstate_val = at_endstate(Board, debug, false,0);
@@ -1677,6 +1679,7 @@ int main(int argc, char** argv) {
             }
             current_player = -1;
             cerr<<"the heuristic value is = "<<get_heuristic(Board, true)<<","<<val<<endl;
+            last_heur_val = get_heuristic(Board, false);
             cout<<next_move<<endl;
             end_time = clock();
             double time_of_move = 0.0;
@@ -1685,6 +1688,7 @@ int main(int argc, char** argv) {
             print_data(time_of_move);  
             cin>>move;
             begin_time = clock();
+            counter++;
             string_to_move_cur(move, 2, Board, crush, false);
             print_board(Board);
             endstate_val = at_endstate(Board,debug,false,1);
