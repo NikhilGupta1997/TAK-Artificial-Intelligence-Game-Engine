@@ -24,7 +24,7 @@ The weights of each feature were learned using a **Learning Script**. The learni
 ## How to run
 1) Compile the code using `compile.sh`.  
 2) Set up the server using the command `python server.py <port no.> -n <n> -TL <time limit>`. Here **n** (default 5) is the board size and **time_limit** (default 120) will set the game time limit in seconds for each player working similar to a chess clock.  
-3) Set up two clients on two different computers with the command `python client.py <server ip> <server port> run.sh -n <n> -mode <MODE>`. Here **n** (default 5) is the board size, *same as that of the server* and **MODE** (default GUI) can be one of either GUI or CUI. GUI mode will allow the player to see the board UI and CUI mode will hide the Board UI. `run.sh` should invoke the game engine code.  
+3) Set up two clients on two different computers with the command `python client.py <server ip> <server port> run.sh -n <n> -mode <MODE>`. Here **n** (default 5) is the board size, *same as that of the server* and **MODE** (default GUI) can be one of either GUI or CUI. GUI mode will allow the player to see the board UI and CUI mode will hide the Board UI. `run.sh` should invoke the game engine code located in `main.cpp`.  
 4) The game will continue running till a winner is crowned.  
 5) After the game is over all the python instances can be simultaneaously closed by running the script `kill_python.sh`.
 
