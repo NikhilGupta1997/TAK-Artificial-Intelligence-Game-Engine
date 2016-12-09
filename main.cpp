@@ -197,7 +197,7 @@ void perform_move(string move, int id, state myBoard[8][8], int &crushed) {
             stack<int> new_stack(myBoard[w1][w2].state_stack);
 
             // Start dropping pieces
-            for(int x1 = 0; x1 <= drop[k-1]; x1++) {
+            for(int x1 = 1; x1 <= drop[k-1]; x1++) {
                 int top = picked.top();
                 picked.pop();
                 // Check if wall is crushed
