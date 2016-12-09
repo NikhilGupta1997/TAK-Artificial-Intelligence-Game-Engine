@@ -17,174 +17,85 @@
 
 using namespace std;
 
-    #define MAX_BOARD_SIZE 8 
-    #define Hash_size 124000000 
+// This is the encoding of all the board pieces
+#define my_flatstone 0
+#define my_standstone 1
+#define my_capstone 2
+#define your_flatstone 3
+#define your_standstone 4
+#define your_capstone 5
 
-    static int max_height = 60;
+// Some cout variables
+static int best_called = 0;
+static int last_heur_val = 0;
 
-    // Some cout variables
-    static int prune = 0;
-    static int best_called = 0;
-    static int counter = 0;
-    static int last_heur_val = 0;
+// Evaluation function variables
+static double diff[8] = {0,35,75,120,170,235,285,400};
+static float against_wall = 40, for_wall = 32;
+static float center_weight = 5;
+static float flat = 3;
+static float wall = 2.98;
+static float cap = 2.99;
 
-    // Evaluation function variables
-    static double capstone = 90;
-    static double flatstone = 75;
-    static double standing = 50;
-    static double cap_threat = 40;
-    static double stand_threat = 40; 
+// Define some global arrays (max board size assumed = 8)
+static float infl[8][8];
+static int neighbors[1000];
+static int DFS_board[8][8];
+static string all_moves[5000];
 
-    static double mapping[3];
-    static double diff[8];
-    static float infl[8][8];
-    static int neighbors[1000];
-    static int temp_board[8][8];
-    static string all_moves[5000];
+// Define some global variables
+static int player_id;
+static int board_size;
+static int current_player;
 
-    // Define some global arrays
-    static int player_id;
-    static int board_size;
-    static int current_player;
+// Clock variables
+static float time_player = 0.0;
+static clock_t begin_time;
+static clock_t end_time;
+static clock_t ids_start;
+static clock_t ids_end;
+static float time_threshold = 8;
 
-    //get_heuristic variables
-    static double heuristic_value = 0.0;
-    static double captured = 0.0;
-    static double threats = 0.0;
-    static double piece_val = 0.0;
+// Global edge variables
+static int top_edge = 0;
+static int left_edge = 0;
+static int bottom_edge = 0;
+static int right_edge = 0;
 
-    static float composition_value = 0.0;
-    static int flat_capt_me, wall_capt_me, cap_capt_me, my_capt;
-    static int flat_capt_you, wall_capt_you, cap_capt_you, your_capt;
-    static int capt_diff;
-    static float against_wall = 40, for_wall = 32;
-    static float capture_advantage = 0.0;
-    static float capture_disadvantage = 0.0;
-    static float capture_delta = 0.0;
+// Global partition vector used to generate moves
+vector< vector<int> > part_list;
 
-    static float wall_disadvantage = 0.0;
-    static float center_weight = 5;
-    static float center_value = 0.0;
-
-    static clock_t func_begin_time;
-    static clock_t func_end_time;
-    static clock_t ids_start;
-    static clock_t ids_end;
-    static float time_threshold = 8;
-
-    static float time_get_heuristic = 0.0;
-    static float time_influence = 0.0;
-    static float time_generate_moves = 0.0;
-    static float time_execute_moves = 0.0;
-    static float time_undo_moves = 0.0;
-    static float time_end_states = 0.0;
-
-    static int number_called_get_heuristic = 0;
-    static int number_called_influence = 0;
-    static int number_called_generate_moves = 0;
-    static int number_called_execute_moves = 0;
-    static int number_called_undo_moves = 0;
-    static int number_called_end_states = 0;
-
-    static int top1 = 0;
-    static int left1 = 0;
-    static int bottom1 = 0;
-    static int right1 = 0;
-
-    static float myval;
-    static int repeated = 0;
-
-    static uint64_t zobrist_table[300000][6];
-    static uint64_t global_hash = 0;
-
-    int temp_size;// = gen_board[i][j].state_stack.size();
-    int stack_size;// = min(temp_size, board_size);
-    int dist_up ;//= i;
-    int dist_down ;//= board_size - 1 - i;
-    int dist_left ;//= j; 
-    int dist_right ;//= board_size - 1 - j;
-    vector< vector<int> > part_list;
-
-class storage {
-  public:
-    float value;
-    string best_move;
-    int depth;
-    storage(string b, float v, int depth) {
-        value = v;
-        b = best_move;
-        this->depth = depth; 
-    }
-};
-
-unordered_map< uint64_t, storage > Transposition_Table(Hash_size);
-
+// Used to sort the elements in a priority queue in decreasing order
 struct Compare_min {
     bool operator()(pair<double,string> p1,pair<double,string> p2) {
         return p1.first<p2.first;
     }
 };
 
+// Used to sort the elements in a priority queue in decreasing order
 struct Compare_max {
     bool operator()(pair<double,string> p1,pair<double,string> p2) {
         return p1.first>p2.first;
     }
 };
 
+// Depicts the state of any one square on the board
 class state {
   public:   
-    stack<int> state_stack;
-    int captured;
+    stack<int> state_stack; // Composition of pieces on the sqare
+    int captured; // Which piece controls the state
     
     state() {
-       captured = -1;
-    }
-    
-    void assign(state Board) {
-        stack<int> temp(Board.state_stack);
-        swap(this->state_stack,temp);
-        this->captured = Board.captured;
-    }
-
-    bool check_equal(state &other) {
-        if(captured != other.captured)
-            return false;
-        if(state_stack.size() != other.state_stack.size())
-            return false;
-        stack<int> temp(other.state_stack);
-        stack<int> temp_curr(this->state_stack);
-        int a1, a2;
-        while(temp.size() != 0) {
-            a1 = temp.top();
-            a2 = temp_curr.top();
-            if(a1 != a2)
-                return false;
-            temp.pop();
-            temp_curr.pop();
-        }
-        return true;
+        captured = -1; // Initially square is not captured
     }
 };
 
-void init_zobrist() {
-    int n_square = board_size*board_size;
-    for(int i = 0; i < board_size; i++) {
-        for(int j = 0; j < board_size; j++) {
-            int k1 = (i*board_size+j)*max_height;
-            for(int t = 0 ; t < max_height; t++) {
-                for(int piece = 0; piece < 6; piece++) {
-                    zobrist_table[k1+t][piece] = rand() % 200000000 ;
-                }
-            }
-        }
-    }
-}
-
+// The class player stores info of the current pieces left in hand
 class Player {
   public:
     int no_flat;
     int capstone;
-    int id; 
+    int id; // For player id (1 or 2)
 
     void assign (int n) {
         if(n == 5) {
@@ -200,13 +111,18 @@ class Player {
             this->capstone=1;
         }
     }
-} cur_player, other_player;
+} cur_player, other_player; // Total two players (current player and opponent)
 
-void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed, bool hash) {
+// This perform the input move and updates the Board state
+void perform_move(string move, int id, state myBoard[8][8], int &crushed) {
+    // Get coordinates of square on which move is performed
     int j = (int)(move[1]) - 96; 
-    int i = (int)(move[2]) - 48;   
+    int i = (int)(move[2]) - 48;
+    // If it is a 'place' move   
     if(!isdigit(move[0])) {
-        assert(myBoard[i-1][j-1].captured == -1);
+        assert(myBoard[i-1][j-1].captured == -1); // Failsafe
+        
+        // Get piece encoding
         int x;
         if(move[0] == 'F') 
             x = 0;
@@ -216,12 +132,12 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed, 
             x = 2;
         if(id != player_id) 
             x = x+3;
-        // if(hash) {
-        //     int entry = ((i-1)*board_size+(j-1))*max_height;
-        //     global_hash = global_hash xor zobrist_table[entry][x];
-        // }
+        
+        // Update board state
         myBoard[i-1][j-1].captured = x;
         myBoard[i-1][j-1].state_stack.push(x);
+        
+        // Update piece count
         if(move[0] == 'F' || move[0] == 'S') {
             if(id == player_id)
                 cur_player.no_flat--;       
@@ -235,96 +151,83 @@ void string_to_move_cur(string move, int id, state myBoard[8][8], int &crushed, 
                 other_player.capstone--;
         } 
     }
+    // If its not a 'place' move
     else {
-        int no_picked = (int) move[0],top;
-        no_picked -= 48;
-        stack<int> picked;
-        int entry = ((i-1)*board_size+(j-1))*max_height;
-        int s =  myBoard[i-1][j-1].state_stack.size();
+        int no_picked = (int)move[0] - 48; // No of pieces picked
+        stack<int> picked; // Stack of picked pieces
+
         for(int l = 0; l < no_picked; l++) {
-            top = myBoard[i-1][j-1].state_stack.top();
-            if(hash)
-                global_hash = global_hash xor zobrist_table[entry+s][top];   
+            int top = myBoard[i-1][j-1].state_stack.top(); // Get top element of stack
             myBoard[i-1][j-1].state_stack.pop();
-            s--;
             picked.push(top);
         }
+
+        // Update captured state of the square
         if(myBoard[i-1][j-1].state_stack.size() != 0)
             myBoard[i-1][j-1].captured = myBoard[i-1][j-1].state_stack.top();
         else
             myBoard[i-1][j-1].captured = -1; 
-        char dir = move[3];
-        vector<int> drop;
+
+        vector<int> drop; // Vector containing the partition of stack during move
         for(int l = 4; l < move.length(); l++) {
-            char m_ch = move[l];
-            int i1 = (int)m_ch - 48;
-            drop.push_back(i1);
+            int num = (int)move[l] - 48; // get number from character encoding
+            drop.push_back(num);
         }
-        int mi, mj;
+
+        char dir = move[3]; // obtain direction of the move
+        int mi, mj; // temp variables
         if(dir == '+') {
-            mi = 1; 
-            mj = 0;
+            mi = 1; mj = 0; // move down
         }
         else if(dir == '-') {
-            mi = -1; 
-            mj = 0;
+            mi = -1; mj = 0; // move up
         }
-        else if(dir == '>') {
-            mi = 0; 
-            mj = 1;
+        else if(dir == '>') { 
+            mi = 0; mj = 1; // move right
         }
         else {
-            mi = 0; 
-            mj = -1;
+            mi = 0; mj = -1; // move left
         }
-        int w1, w2;  
+
+        int w1, w2; // new position coordinates
         for(int k = 1; k <= drop.size(); k++) {
-            w1 = i-1+k*mi;
-            w2 = j-1+k*mj;
-            stack<int> tempo(myBoard[w1][w2].state_stack);
-            int s1 = tempo.size();
-            int cap = myBoard[w1][w2].captured;
-            int x1 = 1;
-            int top1, t1;
-            t1 = myBoard[w1][w2].captured; 
-            int entry1= (w1*board_size+w2)*max_height ;
-            while(x1 <= drop[k-1]) {
-                top1 = picked.top();
+            w1 = i-1 + (k * mi); 
+            w2 = j-1 + (k * mj);
+            // Get stack at new state
+            stack<int> new_stack(myBoard[w1][w2].state_stack);
+
+            // Start dropping pieces
+            for(int x1 = 0; x1 <= drop[k-1]; x1++) {
+                int top = picked.top();
                 picked.pop();
-                if(drop[k-1] == 1 && t1 % 3 == 1) {
-                    int xw = tempo.top();
-                    tempo.pop();
-                    tempo.push(xw-1);
-                    // if(hash) {
-                    //     global_hash = global_hash xor zobrist_table[entry1+s1][xw];
-                    //     global_hash = global_hash xor zobrist_table[entry1+s1][xw-1]; 
-                    // }    
-                    crushed=1;      
-                }   
-                t1 = top1;
-                tempo.push(top1);
-                s1++;
-                // if(hash)
-                //     global_hash = global_hash xor zobrist_table[entry1+s1][t1];               
-                x1++;
+                // Check if wall is crushed
+                if(drop[k-1] == 1 && myBoard[w1][w2].captured % 3 == 1) {
+                    int old_wall = new_stack.top();
+                    new_stack.pop();
+                    new_stack.push(old_wall-1); // Convert wall to flatstone 
+                    crushed = 1;  
+                }
+                new_stack.push(top);             
             }
-            myBoard[w1][w2].captured = top1;
-            swap(tempo, myBoard[w1][w2].state_stack);   
+            // Set new captured state of square
+            myBoard[w1][w2].captured = top;
+            swap(new_stack, myBoard[w1][w2].state_stack); // Update square stack  
         } 
     }
 }
 
-void undo_move(string move, int id,state gen_Board[8][8], int crushed, bool hash) {
+// This undos the input move and updates the Board state
+void undo_move(string move, int id,state gen_Board[8][8], int crushed) {
+    // Get coordinates of square on which move is performed
     int j = (int)(move[1]) - 96;
     int i = (int)(move[2]) - 48;
+    // If it is a 'place' move
     if(!isdigit(move[0])) {
-        int x = gen_Board[i-1][j-1].state_stack.top();
+        // Update board state
         gen_Board[i-1][j-1].captured = -1;
-        // if(hash) {
-        //     int entry = ((i-1)*board_size+(j-1))*max_height;
-        //     global_hash = global_hash xor zobrist_table[entry][x];
-        // }
         gen_Board[i-1][j-1].state_stack.pop();
+        
+        // Update piece count
         if(move[0] == 'F' || move[0] == 'S') {
             if(id == player_id) 
                 cur_player.no_flat++;       
@@ -337,170 +240,157 @@ void undo_move(string move, int id,state gen_Board[8][8], int crushed, bool hash
             else 
                 other_player.capstone++;
         }
-    }    
+    }  
+    // If its not a 'place' move  
     else {   
-        int no_picked = (int)move[0], top;
-        no_picked -= 48;
-        int drops = move.length()-4;
-        int dropped[8];
-        char dir = move[3];
+        int no_picked = (int)move[0] - 48; // No of pieces picked
+        int drops = move.length()-4; // The number of drops in the move
+        int dropped[8]; // Array containing the size of each drop
+        
         for(int l = 4; l < move.length(); l++) {
-            char m_ch = move[l];
-            int i1 = (int)m_ch -48;
-            dropped[l-4] = i1;
+            int num = (int)move[l] -48;
+            dropped[l-4] = num;
         }
-        int mi, mj;
+
+        char dir = move[3]; // obtain direction of the move
+        int mi, mj; // temp variables
         if(dir == '+') {
-            mi = 1; 
-            mj = 0; 
+            mi = 1; mj = 0; // move down
         }
         else if(dir == '-') {
-            mi = -1; 
-            mj = 0;
+            mi = -1; mj = 0; // move up
         }
         else if(dir == '>') {
-            mi = 0; 
-            mj = 1; 
+            mi = 0; mj = 1; // move right
         }
         else {
-            mi = 0; 
-            mj = -1;
+            mi = 0; mj = -1; // move left
         }
-        stack<int> reverse_drop;
-        int pick_up, w1, w2;
+
+        stack<int> reverse_drop; // Stack of the picked up pieces
+        int w1, w2; // new position coordinates
         for(int k = drops; k > 0; k--) {
-            w1 = i-1+k*mi;
-            w2 = j-1+k*mj;
-            pick_up = dropped[k-1];
-            int entry2 = (w1*board_size+w2)*max_height;
-            int x2;
-            int s2 = gen_Board[w1][w2].state_stack.size();                    
-            int captured = gen_Board[w1][w2].captured;
+            w1 = i-1 + (k * mi);
+            w2 = j-1 + (k * mj);
+            int pick_up = dropped[k-1]; // No. of pieces being picked up     
+            int captured = gen_Board[w1][w2].captured; // Maintains the current capturing piece
+            // If there was a possiblity that a wall was crushed
             if(k == drops && gen_Board[w1][w2].state_stack.size() >= 2 && pick_up == 1 && captured % 3 == 2) {
-                    reverse_drop.push(captured);
-                    x2 = gen_Board[w1][w2].state_stack.top();
-                    // if(hash)
-                    //     global_hash = global_hash xor zobrist_table[entry2+s2][x2]; 
+                reverse_drop.push(captured);
+                gen_Board[w1][w2].state_stack.pop();
+                captured = gen_Board[w1][w2].state_stack.top();
+                
+                // Check to see if a wall was crushed during the move
+                if(captured % 3 == 0 && crushed == 1) {
+                    int new_wall = captured;
                     gen_Board[w1][w2].state_stack.pop();
-                    s2--;
-                    captured = gen_Board[w1][w2].state_stack.top();
-                    
-                    if(captured % 3 == 0 && crushed == 1) {
-                        int wx = captured;
-                        gen_Board[w1][w2].state_stack.pop();
-                        wx++;
-                        gen_Board[w1][w2].state_stack.push(wx);
-                        gen_Board[w1][w2].captured = wx;
-                        // if(hash) {
-                        //     global_hash = global_hash xor zobrist_table[entry2+s2][wx-1];
-                        //     global_hash = global_hash xor zobrist_table[entry2+s2][wx];
-                        // }
-                    }
-                    else 
-                        gen_Board[w1][w2].captured = captured;   
+                    gen_Board[w1][w2].state_stack.push(new_wall+1); // Upgrade flatstone to wall
+                    gen_Board[w1][w2].captured = new_wall;
                 }
+                else 
+                    gen_Board[w1][w2].captured = captured;   
+            }
             else {   
-                int x1 = 1;
-                while(x1 <= pick_up) {   
+                for(int x1 = 1; x1 <= pick_up; x1++) { // Pick up pieces 
                     reverse_drop.push(gen_Board[w1][w2].state_stack.top());
-                    x2 = gen_Board[w1][w2].state_stack.top();
-                    // if(hash) {
-                    //     global_hash = global_hash xor zobrist_table[entry2+s2][x2];
-                    // }
                     gen_Board[w1][w2].state_stack.pop();    
-                    s2--;
-                    x1++;
                 }
+                // Update the captured state of square
                 if(gen_Board[w1][w2].state_stack.size() == 0)
                     gen_Board[w1][w2].captured = -1;
                 else
                     gen_Board[w1][w2].captured = gen_Board[w1][w2].state_stack.top();
             }
         }
-        int entry1 = ((i-1)*board_size+(j-1))*max_height; 
-        int  s3 = gen_Board[i-1][j-1].state_stack.size();
+
+        // Add the picked up pieces to the original stack where they were picked from
         while(reverse_drop.size() != 0) {
             int picking = reverse_drop.top();
             reverse_drop.pop();
             gen_Board[i-1][j-1].state_stack.push(picking);
-            s3++;
-            // if(hash)
-            //     global_hash= global_hash xor zobrist_table[entry1+s3][picking];
         }
         gen_Board[i-1][j-1].captured = gen_Board[i-1][j-1].state_stack.top();      
     }
 }
 
-vector< vector<int> > partition(int stack_size) {   
+// This function helps create all possible paritions of a stack of size 'stack_size'
+vector< vector<int> > partition(int stack_size) {
     vector< vector<int> > answer;
     if(stack_size <= 0) 
-        return answer;    
+        return answer; // No partitions can be formed 
     if(stack_size == 1) {
-        vector<int> t; 
-        t.push_back(1);
-        answer.push_back(t);
+        vector<int> temp1; 
+        temp1.push_back(1);
+        answer.push_back(temp1);
         return answer;
     }       
     for(int i = 1; i < stack_size; i++) {
         int j = stack_size-i;
         vector<int> temp2;
         vector<vector<int> > part = partition(j);
-        for(int i1 = 0; i1 < part.size(); i1++) {
-            temp2 = part[i1];
+        for(int k = 0; k < part.size(); k++) {
+            temp2 = part[k];
             temp2.insert(temp2.begin(),i);
             answer.push_back(temp2);
         }   
     }
-    vector<int> t1;
-    t1.push_back(stack_size);
-    answer.push_back(t1);
-    return answer;   
+    vector<int> temp3;
+    temp3.push_back(stack_size);
+    answer.push_back(temp3);
+    return answer; // Vector containing vectors, each one which contains a possible partition of the stack 
 }
 
+// Obtains a List of unvisited neighbors around a given square on the board
 int get_neighbors(int i, int j, int index) {
-    int count = index;
-    if(i != 0 && temp_board[i-1][j] == 0) {
-        neighbors[count] = ((i-1)*board_size + j);
+    int count = index; // This count keeps track of the current position in the global 'neighbors' array
+    if(i != 0 && DFS_board[i-1][j] == 0) { // Check for neighbor above
+        neighbors[count] = ((i-1)*board_size + j); // Encode a 2-D position into 1-D
         count++;
     }
-    if(j != 0 && temp_board[i][j-1] == 0) {
-        neighbors[count] = (i*board_size + j-1);
+    if(j != 0 && DFS_board[i][j-1] == 0) { // Check for neighbor to the left
+        neighbors[count] = (i*board_size + j-1); // Encode a 2-D position into 1-D
         count++;
     }
-    if(i != board_size-1 && temp_board[i+1][j] == 0) {
-        neighbors[count] = ((i+1)*board_size + j);
+    if(i != board_size-1 && DFS_board[i+1][j] == 0) { // Check for neighbor below
+        neighbors[count] = ((i+1)*board_size + j); // Encode a 2-D position into 1-D
         count++;
     }
-    if(j != board_size-1 && temp_board[i][j+1] == 0) {
-        neighbors[count] = (i*board_size + j+1);
+    if(j != board_size-1 && DFS_board[i][j+1] == 0) { // Check for neighbor to the right
+        neighbors[count] = (i*board_size + j+1); // Encode a 2-D position into 1-D
         count++;
     }
     return count;
 }
 
+// DFS check to see if a road is formed or not
 int DFS(int i, int j, int myboard[8][8],  int player_id, state gen_board[8][8], int neigh_index) {
-    bool road = false;
-    int size = get_neighbors(i, j, neigh_index);
+    bool road = false; // Initialise to false
+    int size = get_neighbors(i, j, neigh_index); // Keeps track of the position in the global 'neighbors' array
     int curr, curr_i, curr_j;
     for(int i = neigh_index; i < size; i++) {
         curr = neighbors[i];
+        // Extract 2-D coordinates from 1-D encoding
         curr_i = curr / board_size;
         curr_j = curr % board_size;
-        if(myboard[curr_i][curr_j] == 1)
+        if(myboard[curr_i][curr_j] == 1) // If visited then ignore (failsafe)
             continue;
-        myboard[curr_i][curr_j] = 1;
+        myboard[curr_i][curr_j] = 1; // Mark as visited
+
         if(gen_board[curr_i][curr_j].captured == (0 + player_id * 3) || gen_board[curr_i][curr_j].captured == (2 + player_id * 3)) {
+            // Marks if a certain edge is visited / connected
             if(curr_i == 0) 
-                top1 = 1;
+                top_edge = 1;
             if(curr_i == board_size-1) 
-                bottom1 = 1;
+                bottom_edge = 1;
             if(curr_j == 0) 
-                left1 = 1;
+                left_edge = 1;
             if(curr_j == board_size-1) 
-                right1 = 1;            
-            if(top1 == 1 && bottom1 == 1)
+                right_edge = 1;    
+
+            // Check to see if a path exists between two opposite edges   
+            if(top_edge == 1 && bottom_edge == 1)
                 return true;
-            if(left1 == 1 && right1 == 1)
+            if(left_edge == 1 && right_edge == 1)
                 return true;    
             road = DFS(curr_i, curr_j, myboard, player_id, gen_board, size);
             if(road)
@@ -510,6 +400,7 @@ int DFS(int i, int j, int myboard[8][8],  int player_id, state gen_board[8][8], 
     return road;
 }
 
+// Re-initiallises any input array to zero
 void reset_visited(int matrix[8][8]) {
     for(int i = 0; i < board_size; i++) {
         for(int j = 0; j < board_size; j++) {
@@ -518,17 +409,17 @@ void reset_visited(int matrix[8][8]) {
     }
 }
 
-bool flat_win(state gen_board[8][8], double &value, bool debug) {
+bool flat_win(state gen_board[8][8], double &value) {
     float my_count = 0;
     float your_count = 0;
     int capt;
     bool flag = false;
-    int cur_player_count = cur_player.no_flat;// + cur_player.capstone;
-    int other_player_count = other_player.no_flat;// + other_player.capstone;
-    if(cur_player_count == 0 || other_player_count == 0) {
-        if(debug)    cerr<<"Count is zero "<<cur_player_count<<","<<other_player_count<<endl;
+    int cur_player_count = cur_player.no_flat;
+    int other_player_count = other_player.no_flat;
+
+    // Check to see if any player is out of flatstone
+    if(cur_player_count == 0 || other_player_count == 0)
         flag = true;
-    }
     for(int i = 0; i < board_size; i++) {
         for(int j = 0; j < board_size; j++) { 
             capt = gen_board[i][j].captured;
@@ -540,164 +431,152 @@ bool flat_win(state gen_board[8][8], double &value, bool debug) {
                 your_count++;
         }
     }
-    if(!flag && debug ) {
-        cerr<<"Flat win due to board being filled"<<endl;
-    }
-    // Should not we add the remaining ones as well
-    // Carefully check this one out
+
+    // Caluculate ratio of captured pieces
     if(my_count > your_count)
         value += (float)(my_count/(float)(my_count + your_count));
     else if(my_count < your_count)
-      // wrong  value -= (float)(your_count/(float)(my_count + your_count));
         value -= (float)(your_count/(float)(my_count + your_count));
-    else {
-       if(debug) cerr<<"Returning 0.0001 from flat win"<<endl;
-        value += 10/LONG_MAX; 
-       // cerr<<"The val "<<value<<endl;
-    }
+    else 
+        value += 10/LONG_MAX;
     return true;
 }
 
-void initialise() {
-    top1 = 0;
-    left1 = 0;
-    bottom1 = 0;
-    right1 = 0;
+// Reinitialise the edge variables
+void initialise_edges() {
+    top_edge = 0;
+    left_edge = 0;
+    bottom_edge = 0;
+    right_edge = 0;
 }
 
-double at_endstate(state gen_board[8][8],int debug,bool score, int move){
+// Checks to see if the Board is in an endstate position
+double at_endstate(state gen_board[8][8], bool score, int move){
     bool road = false;
-    reset_visited(temp_board);
-    if(move == 0) { // For double win
+    reset_visited(DFS_board);
+    if(move == 0) { // First check if you have a roadwin and then check for opponent
+        // Check for your roadwin from left_edge to right_edge
         for(int i = 0; i < board_size; i++) {
             int capt_i = gen_board[i][0].captured;
-            if((capt_i == 0 || capt_i == 2) && (temp_board[i][0] == 0)) {
-                temp_board[i][0] = 1;
+            if((capt_i == 0 || capt_i == 2) && (DFS_board[i][0] == 0)) {
+                DFS_board[i][0] = 1;
                 if(i == 0) 
-                    top1 = 1;
-                left1 = 1;
-                road = DFS(i, 0, temp_board, 0, gen_board, 0);
-                initialise();
+                    top_edge = 1;
+                left_edge = 1;
+                road = DFS(i, 0, DFS_board, 0, gen_board, 0);
+                initialise_edges();
                 if(road)
                     return 10.0;
             }
         }
+        // Check for your roadwin from top_edge to bottom_edge
         for(int j = 1; j < board_size; j++) {
             int capt_j = gen_board[0][j].captured;
-            if((capt_j == 0 || capt_j == 2) && (temp_board[0][j] == 0)) {
-                temp_board[0][j] = 1;
-                top1 = 1;
-                road = DFS(0, j, temp_board, 0, gen_board, 0);
-                initialise();
+            if((capt_j == 0 || capt_j == 2) && (DFS_board[0][j] == 0)) {
+                DFS_board[0][j] = 1;
+                top_edge = 1;
+                road = DFS(0, j, DFS_board, 0, gen_board, 0);
+                initialise_edges();
                 if(road)
                     return 10.0;
             }
         }
-        reset_visited(temp_board);
+        reset_visited(DFS_board);
+
+        // Check for opponent roadwin from left_edge to right_edge
         for(int i = 0; i < board_size; i++) {
             int capt_i = gen_board[i][0].captured;
-            if((capt_i == 3 || capt_i == 5) && (temp_board[i][0] == 0)) {
-                temp_board[i][0] = 1;
+            if((capt_i == 3 || capt_i == 5) && (DFS_board[i][0] == 0)) {
+                DFS_board[i][0] = 1;
                 if(i == 0) 
-                    top1 = 1;
-                left1 = 1;
-                road = DFS(i, 0, temp_board, 1, gen_board, 0);
-                initialise();
+                    top_edge = 1;
+                left_edge = 1;
+                road = DFS(i, 0, DFS_board, 1, gen_board, 0);
+                initialise_edges();
                 if(road)
                     return -10.0;
             } 
         }
+        // Check for opponent roadwin from top_edge to bottom_edge
         for(int j = 1; j < board_size; j++) {
             int capt_j = gen_board[0][j].captured;
-            if((capt_j == 3 || capt_j == 5) && (temp_board[0][j] == 0)) {
-                temp_board[0][j] = 1;
-                top1 = 1;
-                road = DFS(0, j, temp_board,  1, gen_board, 0);
-                initialise();
+            if((capt_j == 3 || capt_j == 5) && (DFS_board[0][j] == 0)) {
+                DFS_board[0][j] = 1;
+                top_edge = 1;
+                road = DFS(0, j, DFS_board,  1, gen_board, 0);
+                initialise_edges();
                 if(road)
                     return -10.0;
             }    
         }
     }
-    else {
+    else { // First check if opponent has roadwin and then check for yours
+        // Check for opponent roadwin from left_edge to right_edge
         for(int i = 0; i < board_size; i++) {
             int capt_i = gen_board[i][0].captured;
-            if((capt_i == 3 || capt_i == 5) && (temp_board[i][0] == 0)) {
-                temp_board[i][0] = 1;
+            if((capt_i == 3 || capt_i == 5) && (DFS_board[i][0] == 0)) {
+                DFS_board[i][0] = 1;
                 if(i == 0) 
-                    top1 = 1;
-                left1 = 1;
-                road = DFS(i, 0, temp_board, 1, gen_board, 0);
-                initialise();
+                    top_edge = 1;
+                left_edge = 1;
+                road = DFS(i, 0, DFS_board, 1, gen_board, 0);
+                initialise_edges();
                 if(road)
                     return -10.0;
             } 
         }
+        // Check for opponent roadwin from top_edge to bottom_edge
         for(int j = 1; j < board_size; j++) {
             int capt_j = gen_board[0][j].captured;
-            if((capt_j == 3 || capt_j == 5) && (temp_board[0][j] == 0)) {
-                temp_board[0][j] = 1;
-                top1 = 1;
-                road = DFS(0, j, temp_board,  1, gen_board, 0);
-                initialise();
+            if((capt_j == 3 || capt_j == 5) && (DFS_board[0][j] == 0)) {
+                DFS_board[0][j] = 1;
+                top_edge = 1;
+                road = DFS(0, j, DFS_board,  1, gen_board, 0);
+                initialise_edges();
                 if(road)
                     return -10.0;
             }    
         }
-        reset_visited(temp_board);
+        reset_visited(DFS_board);
+
+        // Check for your roadwin from left_edge to right_edge
         for(int i = 0; i < board_size; i++) {
             int capt_i = gen_board[i][0].captured;
-            if((capt_i == 0 || capt_i == 2) && (temp_board[i][0] == 0)) {
-                temp_board[i][0] = 1;
+            if((capt_i == 0 || capt_i == 2) && (DFS_board[i][0] == 0)) {
+                DFS_board[i][0] = 1;
                 if(i == 0) 
-                    top1 = 1;
-                left1 = 1;
-                road = DFS(i, 0, temp_board, 0, gen_board, 0);
-                initialise();
+                    top_edge = 1;
+                left_edge = 1;
+                road = DFS(i, 0, DFS_board, 0, gen_board, 0);
+                initialise_edges();
                 if(road)
                     return 10.0;
             }
         }
+        // Check for your roadwin from top_edge to bottom_edge
         for(int j = 1; j < board_size; j++) {
             int capt_j = gen_board[0][j].captured;
-            if((capt_j == 0 || capt_j == 2) && (temp_board[0][j] == 0)) {
-                temp_board[0][j] = 1;
-                top1 = 1;
-                road = DFS(0, j, temp_board, 0, gen_board, 0);
-                initialise();
+            if((capt_j == 0 || capt_j == 2) && (DFS_board[0][j] == 0)) {
+                DFS_board[0][j] = 1;
+                top_edge = 1;
+                road = DFS(0, j, DFS_board, 0, gen_board, 0);
+                initialise_edges();
                 if(road)
                     return 10.0;
             }
         }
     }
     double flat_val = 0.0;
-    bool flat_win_check = flat_win(gen_board,flat_val,debug);
+    bool flat_win_check = flat_win(gen_board,flat_val);
     if(!flat_win_check)
         return 0.0;
     else 
         return flat_val;
 }
 
-void print_board(state Board[8][8]) {
-    for(int i = 0; i < board_size; i++) {
-        for(int j = 0; j < board_size; j++) {
-            stack<int> temp(Board[i][j].state_stack);
-            if(temp.size() == 0) {
-                cerr<<"-1       ";
-                continue;
-            }  
-            while(temp.size()!=0) {
-                int x = temp.top();
-                temp.pop();
-                cerr<<x<<":";
-            }
-            cerr<<"       ";
-        }
-        cerr<<endl;
-    }
-}
-
+// This maintains an influence value for each board square based on pieces on and around that square
 void influence(float infl_arr[8][8], state gen_board[8][8], float flat, float wall, float cap) {
+    // Reset the global 'infl_arr'
     for(int i = 0; i < board_size; i++) {
         for(int j = 0; j < board_size; j++) {
             infl_arr[i][j] = 0.0;
@@ -708,6 +587,7 @@ void influence(float infl_arr[8][8], state gen_board[8][8], float flat, float wa
             float k;
             int capt = gen_board[i][j].captured;
             int temp;
+            // Set the value of update variable 'k'
             if(capt == -1)
                 k = 0;
             else if(capt < 3) {
@@ -751,20 +631,15 @@ void influence(float infl_arr[8][8], state gen_board[8][8], float flat, float wa
     }
 }
 
-double get_heuristic(state gen_board[8][8], bool debug) {
-    // Define different heuristic values
-    heuristic_value = 0.0;
-    captured = 0.0;
-    threats = 0.0;
-    piece_val = 0.0;
-
-    // Initialize our array
+// The evaluation function
+double get_heuristic(state gen_board[8][8]) {
+    // Initialize our global array
     int arr[16][6]; 
     for(int i=0;i<2*board_size;i++)
         for(int j=0;j<6;j++)
             arr[i][j]=0;
     
-    // Calculate pieces in each row and column
+    // Calculate no. of pieces in each row and column
     for(int i = 0; i < board_size; i++) {
         for(int j = 0; j < board_size; j++) {
             int capt = gen_board[i][j].captured;
@@ -778,27 +653,32 @@ double get_heuristic(state gen_board[8][8], bool debug) {
     }
 
     // NUMBER SQUARES CAPTURED
+        double captured = 0.0;
         for(int i = 0; i < board_size; i++) {
-            captured += (arr[i][0]-arr[i][3])*50 + (arr[i][2]-arr[i][5])*80;
+            captured += (arr[i][0]-arr[i][3])*50 + (arr[i][2]-arr[i][5])*80; // Measure the captured advantage parameter
         }
 
     // SAME ROW PIECES HAS MORE WEIGHT
-        float wallFactor;
-        composition_value = 0.0;
-        center_value = 0.0;
+        double composition_value = 0.0;
+        double center_value = 0.0;
         for(int i=0;i<2*board_size;i++){
-            flat_capt_me = arr[i][0];
-            wall_capt_me = arr[i][1];
-            cap_capt_me = arr[i][2];
-            my_capt = flat_capt_me + cap_capt_me;
-            flat_capt_you = arr[i][3];
-            wall_capt_you = arr[i][4];
-            cap_capt_you = arr[i][5];
-            your_capt = flat_capt_you + cap_capt_you;
-            capt_diff = my_capt - your_capt;
-            capture_advantage = diff[my_capt];
-            capture_disadvantage = diff[your_capt];
-            capture_delta = 0.0;// + 5.0* (max(your_capt, my_capt)-1)/();
+            int flat_capt_me = arr[i][0];
+            int wall_capt_me = arr[i][1];
+            int cap_capt_me = arr[i][2];
+            int my_capt = flat_capt_me + cap_capt_me;
+
+            int flat_capt_you = arr[i][3];
+            int wall_capt_you = arr[i][4];
+            int cap_capt_you = arr[i][5];
+            int your_capt = flat_capt_you + cap_capt_you;
+
+            // Calculate row/column capture advantage
+            int capt_diff = my_capt - your_capt;
+            double capture_advantage = diff[my_capt];
+            double capture_disadvantage = diff[your_capt];
+            
+            // Set wall dissadvantage factor based on board size
+            float wallFactor;
             if(board_size == 5) {
                 if(cur_player.id == 2 && last_heur_val < -200) {
                     wallFactor = 0.7;
@@ -820,19 +700,22 @@ double get_heuristic(state gen_board[8][8], bool debug) {
                 else
                     wallFactor = 0.9;
             }
+
+            // Calculate wall disadvantage
+            double wall_disadvantage;
             if(capt_diff > 0){
-              //  capture_delta =  5.0 * (my_capt-1) ;
                 wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*against_wall + diff[capt_diff]*(wall_capt_me + wall_capt_you)*2/board_size;
             }
             else if(capt_diff < 0){
-              //   capture_delta =  -5.0 * (your_capt-1) ;
                 wall_disadvantage = (wall_capt_me*for_wall + wall_capt_you*against_wall - diff[-1*capt_diff]*(wall_capt_me + wall_capt_you)*2/board_size);
             }
             else
                 wall_disadvantage = wall_capt_me*for_wall + wall_capt_you*for_wall;
-            composition_value += capture_advantage - capture_disadvantage + capture_delta - wallFactor*wall_disadvantage;
+            
+            composition_value += capture_advantage - capture_disadvantage - wallFactor*wall_disadvantage;
             
             // CENTER CONTROL
+            // Advantage for placing the capstone closer to the center
             if(i < board_size)
                 center_value += (cap_capt_me - cap_capt_you)*(board_size-i-1)*i*center_weight;
             else
@@ -840,7 +723,9 @@ double get_heuristic(state gen_board[8][8], bool debug) {
         }
 
     // CURRENT PIECE HOLDINGS
+        // Give disadvantage for holding an unused piece
         // Check to see if capstone is available
+        double piece_val = 0.0;
         if(other_player.capstone == 1)
             piece_val -= 60;
         if(cur_player.capstone == 1)
@@ -851,10 +736,8 @@ double get_heuristic(state gen_board[8][8], bool debug) {
         piece_val += 24*other_player.no_flat;
 
     // INFLUENCE
+        // Calculate the influence advantage
         double infl_value = 0;
-        float flat = 3;
-        float wall = 2.98;
-        float cap = 2.99;
         influence(infl, gen_board, flat, wall, cap);
         for(int i = 0; i < board_size; i++){
             for(int j = 0; j < board_size; j++){
@@ -866,189 +749,198 @@ double get_heuristic(state gen_board[8][8], bool debug) {
             }
         }
 
-    // MOVE ADVANTAGE -- working quite well
+    // MOVE ADVANTAGE
         double move_advantage = 0.0;
         if(current_player == -1)
             move_advantage -= 250;
         else if(current_player == 1)
             move_advantage += 250;
 
+    // Different weights for parameters for different board sizes
+    double heuristic_value;
     if(board_size == 5)
-        heuristic_value = move_advantage + 1.4*captured + 1.55*composition_value + piece_val + 0.9*infl_value + 1.1*center_value; //1.1 fpr 5
+        heuristic_value = move_advantage + 1.4*captured + 1.55*composition_value + piece_val + 0.9*infl_value + 1.1*center_value;
     else if(board_size == 6)
-        heuristic_value = move_advantage + 1.5*captured + 1*composition_value + piece_val + 0.9*infl_value + 0.5*center_value; //1.1 fpr 5
+        heuristic_value = move_advantage + 1.5*captured + 1*composition_value + piece_val + 0.9*infl_value + 0.5*center_value;
     else
-        heuristic_value = move_advantage + 1.6*captured + 0.75*composition_value + piece_val + 0.9*infl_value + 0.2*center_value; //1.1 fpr 5
-
-    if(debug)
-    {
-        cerr<<"The value of heuristic is "<<heuristic_value<<endl;
-        cerr<<"The Move Advantage is "<<move_advantage<<endl;
-        cerr<<"The Captured is "<<captured<<" , "<<1.4*captured<<endl;
-        cerr<<"The Composition Value is "<<composition_value<<" , "<<1.55*composition_value<<endl;
-        cerr<<"The Piece value is "<<piece_val<<endl;
-        cerr<<"The Influence Value is "<<infl_value<<" , "<<0.9*infl_value<<endl;
-        cerr<<"The Centre Value is "<<center_value<<endl;
-    }
+        heuristic_value = move_advantage + 1.6*captured + 0.75*composition_value + piece_val + 0.9*infl_value + 0.2*center_value;
     return heuristic_value;
 }
 
-void generate_all_moves(int id, state gen_board[8][8],int &size) {
+// Helps to generate all possible moves that can be taken by a player for a given Board state
+void generate_all_moves(int id, state gen_board[8][8], int &size) {
     // Initialize variables
-    size=0;
+    size = 0;
     string move;
     bool valid;
-    Player myplayer;
+    Player the_player;
     int index, capt, curr_capt;
 
+    // Check if it is our move
     if(id == player_id) {
-        myplayer = cur_player;
+        the_player = cur_player;
         index = 0;
     }
+    // Check if it is opponent's move
     else {
-        myplayer = other_player;
+        the_player = other_player;
         index = 1;
     }
     for(int i = 0; i < board_size; i++) {
         for(int j = 0; j < board_size; j++) {
             capt = gen_board[i][j].captured;
             if(capt == -1){
-                if(myplayer.no_flat != 0) {                            
+                // Add the Flatstone moves
+                if(the_player.no_flat != 0) { // If 'the_player' still has some flatstones left                    
                     move = "F" ; 
-                    move += (char)(97+j); 
-                    move += (char)(49+i);
+                    move += (char)(97+j); // Encode to alphabet character
+                    move += (char)(49+i); // Encode to numeric character
                     all_moves[size] = move; 
                     size++;
                 }
             }
-            else if(capt >= 3*index && capt < 3 + 3*index){
-                temp_size = gen_board[i][j].state_stack.size();
-                stack_size = min(temp_size, board_size);
-                dist_up = i;
-                dist_down = board_size - 1 - i;
-                dist_left = j; 
-                dist_right = board_size - 1 - j;
+            // Add all the 'stack pick and place moves'
+            else if(capt >= 3*index && capt < 3 + 3*index){ // Checks to see if square is captured by 'the_player' 
+                int temp_size = gen_board[i][j].state_stack.size(); // Size of the stack on current square
+                int stack_size = min(temp_size, board_size); // Maximum size of stzk that can be picked up by 'the_player'
                 
-
+                // Set distances of edges from current square
+                int dist_up = i;
+                int dist_down = board_size - 1 - i;
+                int dist_left = j; 
+                int dist_right = board_size - 1 - j;
+            
                 for(int x = 1; x <= stack_size; x++) {
-                    part_list = partition(x);
+                    part_list = partition(x); // Get possible partition list for a stack of size 'x'
                     for(int y = 0; y < part_list.size(); y++) { 
                         int part_size = part_list[y].size(); 
+                        
+                        // Check if its possible to spread the stack upwards
                         if(part_size <= dist_up) { 
                             valid = true;
                             move = ""; 
-                            move += (char)(48+x); 
-                            move += (char)(97+j); 
-                            move += (char)(49+i); 
-                            move += "-";
-                            int z1 = -1;
+                            move += (char)(48+x); // Encode the number of pieces picked up
+                            move += (char)(97+j); // Encode to alphabet character
+                            move += (char)(49+i); // Encode to numeric character
+                            move += "-"; // Indicating that pieces are placed in upward direction
                             for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i-z-1][j].captured;
-                                if(curr_capt % 3 == 0 || curr_capt == -1)
-                                    move += (char)(48+part_list[y][z]);
+                                // Check to see there is no capstone or standing stone in the way
+                                if(curr_capt % 3 == 0 || curr_capt == -1) 
+                                    move += (char)(48+part_list[y][z]); // Encode the number of pieces picked up
                                 else {
-                                    valid = false;
-                                    z1 = z;
-                                    break;
+                                    // Check to see if capstone can crush the wall in its path
+                                    if(z == part_size-1) {
+                                        if((part_list[y][z] == 1) && ((curr_capt % 3 == 1) ) && (capt == 2 + index*3))
+                                            move += "1";
+                                        else
+                                            valid = false;
+                                    }
+                                    else {
+                                        valid = false;
+                                        break;
+                                    }
                                 }
                             }
-                            int z = part_size-1;
-                            curr_capt = gen_board[i-z-1][j].captured;
-                            if(z1 == z)
-                                if((part_list[y][z] == 1) && ((curr_capt % 3 == 1) ) && (capt == 2 + index*3)) {
-                                        move += "1";
-                                        valid = true;
-                                }
                             if(valid) {
                                 all_moves[size] = move; 
                                 size++;
                             }
                         }
-                        if(part_size <= dist_down) {
+
+                        // Check if its possible to spread the stack downwards
+                        if(part_size <= dist_down) { 
                             valid = true;
                             move = ""; 
-                            move += (char)(48+x); 
-                            move += (char)(97+j); 
-                            move += (char)(49+i); 
-                            move += "+";
+                            move += (char)(48+x); // Encode the number of pieces picked up
+                            move += (char)(97+j); // Encode to alphabet character
+                            move += (char)(49+i); // Encode to numeric character
+                            move += "+"; // Indicating that pieces are placed in downward direction
                             int z1 = -1;
                             for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i+z+1][j].captured;
                                 if(curr_capt % 3 == 0 || curr_capt == -1)
                                     move += (char)(48+part_list[y][z]); 
                                 else {
-                                    valid = false;
-                                    z1 = z;
-                                    break;
+                                    // Check to see if capstone can crush the wall in its path
+                                    if(z == part_size-1) {
+                                        if((part_list[y][z] == 1) && ((curr_capt % 3 == 1) ) && (capt == 2 + index*3))
+                                            move += "1";
+                                        else
+                                            valid = false;
+                                    }
+                                    else {
+                                        valid = false;
+                                        break;
+                                    }
                                 }
                             }
-                            int z = part_size-1;
-                            curr_capt = gen_board[i+z+1][j].captured;
-                            if(z1 == z)
-                                if((part_list[y][z] == 1) && (curr_capt % 3 == 1) && (capt == 2 + index*3)) {
-                                        move += "1";
-                                        valid = true;
-                                    }
                             if(valid) {
                                 all_moves[size] = move; 
                                 size++;
                             }
                         }
+
+                        // Check if its possible to spread the stack to the left
                         if(part_size <= dist_left) {
                             valid = true;
                             move = ""; 
-                            move += (char)(48+x); 
-                            move += (char)(97+j); 
-                            move += (char)(49+i); 
-                            move += "<";
+                            move += (char)(48+x); // Encode the number of pieces picked up
+                            move += (char)(97+j); // Encode to alphabet character
+                            move += (char)(49+i); // Encode to numeric character
+                            move += "<"; // Indicating that pieces are placed in left direction
                             int z1 = -1;
                             for(int z = 0; z < part_size; z++) {
                                 curr_capt = gen_board[i][j-z-1].captured;
                                 if(curr_capt % 3 == 0 || curr_capt == -1)
                                     move += (char)(48+part_list[y][z]);  
                                 else {
-                                    valid = false;
-                                    z1 = z;
-                                    break;
+                                    // Check to see if capstone can crush the wall in its path
+                                    if(z == part_size-1) {
+                                        if((part_list[y][z] == 1) && ((curr_capt % 3 == 1) ) && (capt == 2 + index*3))
+                                            move += "1";
+                                        else
+                                            valid = false;
+                                    }
+                                    else {
+                                        valid = false;
+                                        break;
+                                    }
                                 }
                             }
-                            int z = part_size-1;
-                            curr_capt = gen_board[i][j-z-1].captured;
-                            if(z1 == z)
-                                if((part_list[y][z] == 1) && (curr_capt % 3 == 1) && (capt == 2 + index*3)) {
-                                        move += "1";
-                                        valid = true;
-                                    } 
                             if(valid) {
                                 all_moves[size] = move; 
                                 size++;
                             }
                         }
+
+                        // Check if its possible to spread the stack to the right
                         if(part_size <= dist_right) {
                             valid = true;
                             move = ""; 
-                            move += (char)(48+x); 
-                            move += (char)(97+j); 
-                            move += (char)(49+i); 
-                            move += ">";
+                            move += (char)(48+x); // Encode the number of pieces picked up
+                            move += (char)(97+j); // Encode to alphabet character
+                            move += (char)(49+i); // Encode to numeric character
+                            move += ">"; // Indicating that pieces are placed in right direction
                             int z1 = -1;
                             for(int z = 0; z < part_size; z++){
                                 curr_capt = gen_board[i][j+z+1].captured;
                                 if(curr_capt % 3 == 0 || curr_capt == -1)
                                     move += (char)(48+part_list[y][z]); 
                                 else {
-                                    valid = false;
-                                    z1 = z;
-                                    break;
+                                    // Check to see if capstone can crush the wall in its path
+                                    if(z == part_size-1) {
+                                        if((part_list[y][z] == 1) && ((curr_capt % 3 == 1) ) && (capt == 2 + index*3))
+                                            move += "1";
+                                        else
+                                            valid = false;
+                                    }
+                                    else {
+                                        valid = false;
+                                        break;
+                                    }
                                 }
                             }
-                            int z = part_size-1;
-                            curr_capt = gen_board[i][j+z+1].captured;
-                            if(z1 == z)
-                                if((part_list[y][z] == 1) && (curr_capt % 3 == 1) && (capt == 2 + index*3)) {
-                                        move += "1";
-                                        valid = true;
-                                    }
                             if(valid) {
                                 all_moves[size] = move; 
                                 size++;
@@ -1059,28 +951,30 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
             }
         }
     }
+    // Add capstone moves
     for(int i = 0; i < board_size; i++) {
         for(int j = 0; j < board_size; j++) {
             capt = gen_board[i][j].captured;
             if(capt == -1){
-                if(myplayer.capstone != 0) {
+                if(the_player.capstone != 0) {
                     move = "C" ; 
-                    move += (char)(97+j); 
-                    move += (char)(49+i);
+                    move += (char)(97+j); // Encode to alphabet character
+                    move += (char)(49+i); // Encode to numeric character
                     all_moves[size] = move; 
                     size++;                            
                 }
             }
         }
     }
+    // Add standing stone moves
     for(int i = 0; i < board_size; i++) {
         for(int j = 0; j < board_size; j++) {
             capt = gen_board[i][j].captured;
             if(capt == -1){
-                if(myplayer.no_flat != 0) {                            
+                if(the_player.no_flat != 0) {                            
                     move = "S" ; 
-                    move += (char)(97+j); 
-                    move += (char)(49+i);
+                    move += (char)(97+j); // Encode to alphabet character
+                    move += (char)(49+i); // Encode to numeric character
                     all_moves[size] = move; 
                     size++;                           
                 }
@@ -1088,83 +982,42 @@ void generate_all_moves(int id, state gen_board[8][8],int &size) {
         }
     }
 }
-static int win_score_rw = 0;
-static float count_loser_score_rw = 0.0 ;
-static float count_winner_score_rw = 0.0 ;
-static int capt_rw ;
-double score_road_win(state myboard[8][8], int los_player_id) // 0 means our player has lost
-{
-   // int player_id ;
-    //win_score_rw = 0;
-    count_loser_score_rw = 0.0;
-    count_winner_score_rw = board_size*board_size;
-   // capt_rw ;
 
-    for(int i=0;i<board_size;i++)
-    {
-        for(int j=0; j<board_size; j++)
-        {
-            capt_rw = myboard[i][j].captured;
-            if(capt_rw == 0 + (1-los_player_id)*3 ||capt_rw == 2 + (1-los_player_id)*3) // count of winner
-            {
-                count_winner_score_rw+= 1.0;
+// Calculates the score at current board state
+double current_score(state myboard[8][8], int los_player_id) { // 0 means our player has lost
+    double count_loser_score = 0.0;
+    double count_winner_score = board_size*board_size; // initialise winner score
+
+    for(int i=0;i<board_size;i++) {
+        for(int j=0; j<board_size; j++) {
+            int capt = myboard[i][j].captured;
+            if(capt == 0 + (1-los_player_id)*3 || capt == 2 + (1-los_player_id)*3) { // count of winner
+                count_winner_score += 1.0;
             }
-            else if(capt_rw == 0 + (los_player_id)*3 ||capt_rw == 2 + (los_player_id)*3)
-            {
-                count_loser_score_rw+= 1.0 ;
+            else if(capt == 0 + (los_player_id)*3 || capt == 2 + (los_player_id)*3) {
+                count_loser_score += 1.0;
             }
         }
     }
 
+    // Add number of flatstones remaining to the winner's score
     if(player_id == 0)
-          count_winner_score_rw += other_player.no_flat;
+          count_winner_score += other_player.no_flat;
     else
-          count_winner_score_rw += cur_player.no_flat; 
-      double ans = (LONG_MAX/1000)* (float)count_loser_score_rw/(float)(count_winner_score_rw + count_loser_score_rw) ;
-    // cerr<< ans <<endl ;  
-    return ans;       
-    // if(player_id == 1) // we are white
-    // {
-    //     if(los_player_id == 0)
-    //     {
-
-    //     }
-    //     else
-    //     {
-
-    //     }    
-    // }
-    // else
-    // {
-    //     if(los_player_id == 0)
-    //     {
-
-    //     }
-    //     else
-    //     {
-            
-    //     }
-    // }    
-
+          count_winner_score += cur_player.no_flat; 
+    
+    double ans = (LONG_MAX/1000)* (float)count_loser_score/(float)(count_winner_score + count_loser_score) ; 
+    return ans;         
 }
-double best_move(state myboard[8][8],double alpha,double beta,int depth,string &best_move_chosen,bool minimum) {
-    // Declare Variables
-    // if(depth>=3)
-    best_called++;
-    int move_player;
-    vector<pair<double,string> > values;
-    double min_val = LONG_MAX, max_val = LONG_MIN, child, ans, val;
 
-    // if(Transposition_Table.find(global_hash) != Transposition_Table.end()) {
-    //     storage temp = Transposition_Table.find(global_hash)->second;
-    //     if(temp.depth >= depth) {
-    //         if(depth >= 3) 
-    //             repeated++;
-    //         best_move_chosen= temp.best_move;
-    //         return temp.value;
-    //     }
-    // }    
+// This is the search function that searches for the best possible move
+double best_move(state myboard[8][8], double alpha, double beta, int depth, string &best_move_chosen, bool minimum) {
+    best_called++; // tracks the number of times best_move is called
 
+    // Initialise best_move variables
+    double min_val = LONG_MAX, max_val = LONG_MIN, child, ans, val; 
+
+    // To figure out which player was white to aid in move_advantage parameter
     if(!minimum && player_id == 1)
         current_player = -1;
     else if (minimum && player_id == 2)
@@ -1172,6 +1025,8 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     else
         current_player = 0;
 
+    // To figure the player calling the best_move function
+    int move_player;
     if(minimum) {
         if(player_id == 1) 
             move_player = 2;
@@ -1181,58 +1036,41 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
     else  
         move_player = player_id;
 
-    int size = 0;
-    // number_called_generate_moves++ ;
-    // func_begin_time = clock();   
+    int size = 0; 
     generate_all_moves(move_player,myboard,size);
-    // func_end_time = clock();
-    // time_generate_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
 
+    vector<pair<double,string> > values; // To store evaluated state values for sorting
     for(int i = 0; i < size; i++) {
-        int crushed = 0;
-     //    number_called_execute_moves++ ;
-        // func_begin_time = clock();   
-        counter++;
-        string_to_move_cur(all_moves[i], move_player, myboard, crushed, false);
-     //    func_end_time = clock();
-        // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+        int crushed = 0; // variable which checks if wall was crushed by capstone
+        perform_move(all_moves[i], move_player, myboard, crushed); // Move to child state
 
-        // number_called_end_states++ ;
-        // func_begin_time = clock();
         if(!minimum)   
-            ans = at_endstate(myboard,0,false,0); // as it was my move
+            ans = at_endstate(myboard, false, 0); // as it was my move
         else 
-            ans = at_endstate(myboard,0,false,1); // ad it was other players move previously
-     //    func_end_time = clock();
-        // time_end_states += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+            ans = at_endstate(myboard, false, 1); // as it was opponents move
 
+        // Incase of a road_win set val to extremes
         if(ans == 10.0) {
-            // cerr<<"my road_win found"<<endl;
-            //val = LONG_MAX - score_road_win(myboard,1);
             val = LONG_MAX ;
         }
         else if(ans == -10.0) {
-            // cerr<<"your road_win found"<<endl;
-            // val = LONG_MIN  + score_road_win(myboard,0);
-            // if(all_moves[i] == "Fe4") cerr<<"Detected loss with score"<< (val - LONG_MIN)<<"   .   "<<score_road_win(myboard,0)<<endl;
             val = LONG_MIN;
         }
         else if(ans == 0.0) {
-         //    number_called_get_heuristic++;
-            // func_begin_time=clock();
-            val = get_heuristic(myboard, false);
-            // func_end_time=clock();
-            // time_get_heuristic += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+            val = get_heuristic(myboard);
         }
+        // In case of flatwin
         else {
-            // cerr<<"Flat win detected"<<endl;
-            if(ans == LONG_MAX * 0.0001)
+            if(ans == LONG_MAX * 0.0001) // Flat win tie
                 val = 0.0 ;
             else
                 val = ans*LONG_MAX;  
         }
+
+        // Sort only if depth is greater than 1
         if(depth != 1)
-            values.push_back(std::make_pair(val, all_moves[i]));
+            values.push_back(std::make_pair(val, all_moves[i])); // Add to vector list before sorting
+        // If depth = 1, perform alpha-beta search
         else if(minimum) {
             best_called++;
             child = val;
@@ -1250,16 +1088,11 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
                 best_move_chosen = all_moves[i];
         }
 
-     //    number_called_undo_moves++;
-        // func_begin_time=clock();
-        undo_move(all_moves[i], move_player, myboard, crushed, false);
-        counter--;
-        // func_end_time = clock();
-        // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+        undo_move(all_moves[i], move_player, myboard, crushed); // To return to parent state
 
-        if(alpha > beta) {
+        // Pruning Step
+        if(alpha > beta)
             return child;
-        } 
     }
     if(depth == 1) {
         if(minimum)
@@ -1267,42 +1100,36 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
         else
             return max_val;
     }
-
+    // If depth > 1, then perform alpha-beta search in the sorted priority queues
     if(minimum) {
+        // Contruct max priority queue
         priority_queue<pair<double,string>, vector<pair<double,string> >, Compare_max> maxi_heap(values.begin(),values.end());          
+        
         for(int i = 0; i < size; i++) {
             string move_taken = "";
             double heur_val = maxi_heap.top().first;
             move_taken = maxi_heap.top().second;
             maxi_heap.pop();
-            int crushed = 0;
 
-         //    number_called_execute_moves++ ;
-            // func_begin_time = clock();   
-            uint64_t a1 = global_hash;
-            counter++;
-            string_to_move_cur(move_taken, move_player, myboard, crushed, true);
-      //       func_end_time = clock();
-            // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+            int crushed = 0;
+            perform_move(move_taken, move_player, myboard, crushed);
 
             string tmp = "";
-           if(heur_val == LONG_MAX){
-                child = LONG_MAX - score_road_win(myboard,1);
+            // If Roadwin check check to see better score by checking 'current_score'
+            if(heur_val == LONG_MAX) {
+                child = LONG_MAX - current_score(myboard,1);
             }
-            else if(heur_val == LONG_MIN){
-                child = LONG_MIN  + score_road_win(myboard,0);
-                // if(move_taken == "Fe4") cerr<<"Detected loss with score "<< (child - LONG_MIN)<<endl;
+            else if(heur_val == LONG_MIN) {
+                child = LONG_MIN  + current_score(myboard,0);
             }
-            else if(heur_val > LONG_MAX/100 )
-            {
-                if(get_heuristic(myboard, false) < 700) // to check if flat win or not
+            else if(heur_val > LONG_MAX/100 ) {
+                if(get_heuristic(myboard) < 700) // to check if flat win or not
                     child = heur_val;
                 else
                     child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum);
             }
-            else if(heur_val < LONG_MIN/100)
-            {
-                if(get_heuristic(myboard, false) > -700) // to check if flat win or not
+            else if(heur_val < LONG_MIN/100) {
+                if(get_heuristic(myboard) > -700) // to check if flat win or not
                     child = heur_val;
                 else
                     child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum);
@@ -1314,59 +1141,41 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             if(child == min_val) 
                 best_move_chosen = move_taken; 
 
-      //       number_called_undo_moves++;
-            // func_begin_time=clock();
-            undo_move(move_taken, move_player, myboard, crushed,true);
-            counter--;
-            // func_end_time = clock();
-            // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+            undo_move(move_taken, move_player, myboard, crushed); // To return to parent state
        
-            if(alpha > beta) {
-                // if(depth != 1)
-             //     cerr<<"Pruned at "<<i<<" at depth "<<depth<<endl;
-                // storage temp(best_move_chosen,child,depth);
-                // Transposition_Table.insert(std::make_pair(global_hash,temp));
+            // Pruning Step
+            if(alpha > beta)
                 return child;
-            }    
         }
-        // storage temp(best_move_chosen,min_val,depth);
-        // Transposition_Table.insert(std::make_pair(global_hash,temp));
         return min_val;
     }
     else {
+        // Contruct min priority queue
         priority_queue<pair<double,string>, vector<pair<double,string> >, Compare_min> mini_heap(values.begin(),values.end());   
+        
         for(int i = 0; i < size; i++) { 
             string move_taken = "";
             double heur_val = mini_heap.top().first;
             move_taken = mini_heap.top().second;
             mini_heap.pop();
-            int crushed = 0;
 
-   //          number_called_execute_moves++ ;
-            // func_begin_time = clock();   
-            counter++;
-            string_to_move_cur(move_taken, move_player, myboard, crushed,true);
-      //       func_end_time = clock();
-            // time_execute_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+            int crushed = 0;
+            perform_move(move_taken, move_player, myboard, crushed);
 
             string tmp = "";
-            if(heur_val == LONG_MAX){
-                child = LONG_MAX - score_road_win(myboard,1);
-            }
-            else if(heur_val == LONG_MIN){
-                child = LONG_MIN  + score_road_win(myboard,0);
-                // if(move_taken == "Fe4") cerr<<"Detected loss with score "<< (child - LONG_MIN)<<endl;
-            }
-            else if(heur_val > LONG_MAX/100 )
-            {
-                if(get_heuristic(myboard, false) < 700) // to check if flat win or not
+            // If Roadwin check check to see better score by checking 'current_score'
+            if(heur_val == LONG_MAX)
+                child = LONG_MAX - current_score(myboard,1);
+            else if(heur_val == LONG_MIN)
+                child = LONG_MIN  + current_score(myboard,0);
+            else if(heur_val > LONG_MAX/100 ) {
+                if(get_heuristic(myboard) < 700) // to check if flat win or not
                     child = heur_val;
                 else
                     child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum);
             }
-            else if(heur_val < LONG_MIN/100)
-            {
-                if(get_heuristic(myboard, false) > -700) // to check if flat win or not
+            else if(heur_val < LONG_MIN/100) {
+                if(get_heuristic(myboard) > -700) // to check if flat win or not
                     child = heur_val;
                 else
                     child = best_move(myboard, alpha, beta, (depth-1), tmp, !minimum);
@@ -1378,65 +1187,17 @@ double best_move(state myboard[8][8],double alpha,double beta,int depth,string &
             if(child == max_val) 
                 best_move_chosen = move_taken;
 
-      //       number_called_undo_moves++;
-            // func_begin_time=clock();
-            undo_move(move_taken, move_player, myboard, crushed,true);
-            counter--;
-      //       func_end_time = clock();
-            // time_undo_moves += float( func_end_time - func_begin_time ) /  CLOCKS_PER_SEC ;
+            undo_move(move_taken, move_player, myboard, crushed); // To return to parent state
        
-           if(alpha > beta){
-                //if(depth!=1)
-                //cerr<<"Pruned at "<<i<<" at depth "<<depth<<endl;
-                // storage temp(best_move_chosen,child,depth);
-                // Transposition_Table.insert(std::make_pair(global_hash,temp));
-                return child;
-            }    
+            // Pruning Step
+            if(alpha > beta)
+                return child;  
         }
-        // storage temp(best_move_chosen,max_val,depth);
-        // Transposition_Table.insert(std::make_pair(global_hash,temp));
         return max_val;
     }
 } 
 
-void print_data(double total_time) {
-    // cerr<<"The data for the move is "<<endl;
-    cerr<<"The total time taken : "<< total_time<<endl;
-    // cerr<<"Get heuristic Function"<<endl;
-    // cerr<<"Times Called : "<<number_called_get_heuristic<<endl;
-    // cerr<<"Total time taken : "<<time_get_heuristic<<endl;
-    // cerr<<"Influence Function"<<endl;
-    // cerr<<"Times Called : "<<number_called_influence<<endl;
-    // cerr<<"Total time taken : "<<time_influence<<endl;
-    // cerr<<"Generate Moves Function"<<endl;
-    // cerr<<"Times Called : "<<number_called_generate_moves<<endl;
-    // cerr<<"Total time taken : "<<time_generate_moves<<endl;
-    // cerr<<"Execute Moves Function"<<endl;
-    // cerr<<"Times Called : "<<number_called_execute_moves<<endl;
-    // cerr<<"Total time taken : "<<time_execute_moves<<endl;
-    // cerr<<"Undo Move Function"<<endl;
-    // cerr<<"Times Called : "<<number_called_undo_moves<<endl;
-    // cerr<<"Total time taken : "<<time_undo_moves<<endl;
-    // cerr<<"End State Function"<<endl;
-    // cerr<<"Times Called : "<<number_called_end_states<<endl;
-    // cerr<<"Total time taken : "<<time_end_states<<endl;
- //    cerr<<"Percentage : "<<(float)time_end_states/total_time*100<<endl;
-
- // time_get_heuristic=0.0;
- // time_influence=0.0;
- // time_generate_moves=0.0;
- // time_execute_moves=0.0;
- // time_undo_moves=0.0;
- // time_end_states=0.0;
-
- // number_called_get_heuristic=0;
- // number_called_influence=0;
- // number_called_generate_moves=0;
- // number_called_execute_moves=0;
- // number_called_undo_moves=0;
- // number_called_end_states=0;
-}
-
+// Obtain game score in case of GAME OVER
 int get_score(state Board[8][8], bool winner) {
     int count1 = 0;
     int count2 = 0;
@@ -1448,8 +1209,7 @@ int get_score(state Board[8][8], bool winner) {
                 count1++;
         }
     }
-    count1 += cur_player.no_flat;
-    //count2 += other_player.no_flat;
+    count1 += cur_player.no_flat; // Count unused flatstones if you win
     if(winner)
         return count1;
     else
@@ -1457,87 +1217,66 @@ int get_score(state Board[8][8], bool winner) {
 }
 
 int main(int argc, char** argv) {
-    diff[0] = 0;
-    diff[1] = 25+10; //35
-    diff[2] = 55+20; // 75
-    diff[3] = 85+35; // 120
-    diff[4] = 120+50;// 170 -- decrease
-    diff[5] = 200+35;// 
-    diff[6] = 285;
-    diff[7] = 400;
-    mapping[0] = flatstone;
-    mapping[1] = standing;
-    mapping[2] = capstone;
-    
-    // myval = strtod(argv[1], NULL);
-    myval = 24;
+    // Start random seed for random functions
     srand(time(NULL));
-
-    // Clock variables
-    float time_player = 0.0;
-    clock_t begin_time;
-    clock_t end_time;
-
-    float endstate_val;
-    state Board [8][8];
-
+    
     int n, time_limit;
-    cerr<<"started"<<endl;
-    cin>>player_id>>n>>time_limit;
+    // Get input from server about game specifications
+    cin >> player_id >> n >> time_limit;
     begin_time = clock();
-
     board_size = n;
-    // init_zobrist();
+
+    // Initialize the two players
     cur_player.assign(board_size);
     other_player.assign(board_size);
+
+    // Initialise board
+    state Board [8][8];
     for(int i = 0; i < board_size; i++)
         for(int j = 0; j < board_size; j++)
             Board[i][j].captured = -1;
-    int debug = 1;    
-    string move;
-    int temp_size;
-    int crush = 0;        
-    bool on = true;
-    if(player_id == 2) {
-        cin>>move;
-        begin_time = clock();
-        crush = 0;
-        counter++;
-        string_to_move_cur(move, 2, Board, crush, false);
-        // print_board(Board);
-        generate_all_moves(1, Board, temp_size);
-        int randmove = rand()%temp_size;
-        while(all_moves[randmove][randmove] != 'F')
-            randmove = rand()%temp_size;
-        // string_to_move_cur(all_moves[randmove], 1, Board, crush, false);
-        // cout<<all_moves[randmove]<<endl;''
-        if(Board[0][0].captured == -1){
-            counter++;
-            string_to_move_cur(all_moves[0], 1, Board, crush, false);
-            cout<<all_moves[0]<<endl;
-        }
-        else{
-            counter++;
-            string_to_move_cur(all_moves[board_size-2], 1, Board, crush, false);
-            cout<<all_moves[board_size-2]<<endl;
-        }
-        end_time = clock();
-        time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
-        // print_board(Board);       
-        int count = 0;
 
-        while(on) {   
-            prune = 0;
-            cin>>move;
-            begin_time = clock();
+    if(player_id == 2) {
+        // Get other player's move
+        string move;
+        cin>>move; 
+        
+        begin_time = clock(); // Start player 2 time
+        
+        // Perfom other player's move
+        int crush = 0;
+        perform_move(move, 2, Board, crush);
+        
+        // Generate possible moves
+        int temp_size;
+        generate_all_moves(1, Board, temp_size);
+
+        // Choose initial move as random flatstone move
+        int randmove = rand()%temp_size;
+        while(all_moves[randmove][randmove] != 'F') // Until its a flatstone placing move
+            randmove = rand()%temp_size;
+        
+        // Perform picked move
+        perform_move(all_moves[randmove], 1, Board, crush, false);
+        cout<<all_moves[randmove]<<endl;
+        
+        // End player 2 time and update time remaining
+        end_time = clock();
+        time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;      
+        
+        int count = 0; // Start move count
+        while(true) {
+            cin>>move; // Get other player's move
+
+            begin_time = clock(); // Start player 2 time
+
+            // Perfom other player's move
             crush = 0;
-            counter++;
-            string_to_move_cur(move, 1, Board, crush, false);
-            crush = 0;
-            // print_board(Board);
-            cerr<<endl;
-            endstate_val = at_endstate(Board,debug,false,1);
-            if(endstate_val > 0.0) {
+            perform_move(move, 1, Board, crush);
+
+            // Check if endstate is reached
+            int endstate_val = at_endstate(Board, false, 1);
+            if(endstate_val > 0.0) { // Check for win
                 cerr<<"You are the winner"<<endl;
                 if(endstate_val == 10.0)
                     cerr<<"Scorewin "<<get_score(Board, true) + board_size*board_size<<endl;
@@ -1545,7 +1284,7 @@ int main(int argc, char** argv) {
                     cerr<<"Scorewin "<<get_score(Board, true)<<endl;
                 cerr<<"Scorelose "<<get_score(Board, false)<<endl;
             }
-            else if(endstate_val < 0.0) {
+            else if(endstate_val < 0.0) { // Check for loss
                 cerr<<"You are the loser"<<endl;
                 if(endstate_val == -10.0)
                     cerr<<"Scorewin "<<get_score(Board, false) + board_size*board_size<<endl;
@@ -1554,22 +1293,27 @@ int main(int argc, char** argv) {
                 cerr<<"Scorelose "<<get_score(Board, true)<<endl;
             }
             current_player = 1;
-            // cerr<<"the heuristic value is = "<<get_heuristic(Board, true)<<endl;
-            generate_all_moves(2, Board, temp_size);
-            string next_move = "";
-            double val;
-            int limit = 6;
+            
             cerr<<"\nCount is "<<count<<endl;
+            
+            // Do search for best move using itterative deepening search with time limits
+            int limit = 6;
+            double val;
+            string next_move = "";
             if(time_limit - time_player < 20)
                 limit = 4;
             else if(time_limit - time_player < 42)
                 limit = 5;
             for(int i = 1; i <= limit; i++) {
                 best_called = 0;
+
+                // Measure time taken to find best move
                 ids_start = clock();
                 val = best_move(Board, LONG_MIN/2, LONG_MAX/2, i, next_move, false);
                 ids_end = clock();
                 float time = float(ids_end - ids_start) / CLOCKS_PER_SEC;
+                
+                // Print details
                 cerr<<"Depth "<<i<<"="<<next_move;
                 cerr<<"\ttime taken = "<<time;
                 cerr<<"\teffective branching factor = "<<pow(best_called,(1.0/(i+1)));
@@ -1577,14 +1321,12 @@ int main(int argc, char** argv) {
                 if(time > time_threshold/pow(best_called,(1.0/(i+1))))
                     break;
             }
-            // cerr<<"Repeated "<<repeated<<" out of "<<best_called<<endl;
-            repeated = 0;
-            //Transposition_Table.clear();
-            counter++;
-            string_to_move_cur(next_move, 2, Board, crush, false);
-            // print_board(Board);
-            endstate_val = at_endstate(Board, debug, false,0);
-            if(endstate_val > 0.0) {
+            // Perform picked move
+            perform_move(next_move, 2, Board, crush);
+
+            // Check if endstate is reached
+            endstate_val = at_endstate(Board, false, 0);
+            if(endstate_val > 0.0) { // Check for win
                 cerr<<"You are the winner"<<endl;
                 if(endstate_val == 10.0)
                     cerr<<"Scorewin "<<get_score(Board, true) + board_size*board_size<<endl;
@@ -1592,7 +1334,7 @@ int main(int argc, char** argv) {
                     cerr<<"Scorewin "<<get_score(Board, true)<<endl;
                 cerr<<"Scorelose "<<get_score(Board, false)<<endl;
             }
-            else if(endstate_val < 0.0) {
+            else if(endstate_val < 0.0) { // Check for loss
                 cerr<<"You are the loser"<<endl;
                 if(endstate_val == -10.0)
                     cerr<<"Scorewin "<<get_score(Board, false) + board_size*board_size<<endl;
@@ -1601,55 +1343,69 @@ int main(int argc, char** argv) {
                 cerr<<"Scorelose "<<get_score(Board, true)<<endl;
             }
             current_player = 0;
-            cerr<<"the heuristic value is = "<<get_heuristic(Board, true)<<","<<val<<endl;
-            last_heur_val = get_heuristic(Board, false);
-            count++;
+            cerr<<"the heuristic value is = "<<get_heuristic(Board)<<","<<val<<endl;
+            last_heur_val = get_heuristic(Board);
             cout<<next_move<<endl;
+            count++; // Update move count
+            
+            // End player 2 time and update time remaining
             end_time = clock();
             double time_of_move = 0.0;
             time_of_move = float( end_time - begin_time ) /  CLOCKS_PER_SEC;
             time_player += time_of_move;
-            print_data(time_of_move);
         }
     }   
     else if(player_id == 1) {
+        // Generate possible moves
+        int temp_size;
         generate_all_moves(2, Board, temp_size);
+
+        // Choose initial move as random flatstone move
         int randmove = rand()%temp_size;
-        while(all_moves[randmove][0] != 'F')
+        while(all_moves[randmove][0] != 'F') // Until its a flatstone placing move
             randmove = rand()%temp_size;
-        // cerr<<all_moves[randmove]<<" \n";
-        // string_to_move_cur(all_moves[randmove], 2, Board, crush, false);
-        // cout<<all_moves[randmove]<<endl;
-        cerr<<all_moves[0]<<" \n";
-        counter++;
-        string_to_move_cur(all_moves[0], 2, Board, crush, false);
-        cout<<all_moves[0]<<endl;
+        
+        // Perform picked move
+        int crush = 0;
+        perform_move(all_moves[randmove], 2, Board, crush);
+        cout<<all_moves[randmove]<<endl;
+        
+        // End player 2 time and update time remaining
         end_time = clock();
         time_player += float( end_time - begin_time ) /  CLOCKS_PER_SEC;
+        
+        // Get other player's move
+        string move;
+        cin>>move; 
+
+        begin_time = clock(); // Start player 1 time
+
+        // Perfom other player's move
         crush = 0;
-        cerr<<endl;
-        cin>>move;
-        begin_time = clock();
-        counter++;
-        string_to_move_cur(move, 1, Board, crush, false);
-        int count = 0;
-        while(on) {
-            crush = 0;
-            string next_move;
-            double val;
+        perform_move(move, 1, Board, crush);
+
+        int count = 0; // Start move count
+        while(true) {
             cerr<<"\nCount is "<<count<<endl;
-            count++;
+
+            // Do search for best move using itterative deepening search with time limits
             int limit = 6;
+            double val;
+            string next_move = "";
             if(time_limit - time_player < 20)
                 limit = 4;
             else if(time_limit - time_player < 42)
                 limit = 5;
             for(int i = 2; i <= limit; i++) {
                 best_called = 0;
+
+                // Measure time taken to find best move
                 ids_start = clock();
                 val = best_move(Board, LONG_MIN/2, LONG_MAX/2, i, next_move, false);
                 ids_end = clock();
                 float time = float(ids_end - ids_start) / CLOCKS_PER_SEC;
+                
+                // Print details
                 cerr<<"Depth "<<i<<"="<<next_move;
                 cerr<<"\ttime taken = "<<time;
                 cerr<<"\teffective branching factor = "<<pow(best_called,(1.0/(i+1)));
@@ -1657,11 +1413,12 @@ int main(int argc, char** argv) {
                 if(time > time_threshold/pow(best_called,(1.0/(i+1))))
                     break;
             }
-            counter++;
-            string_to_move_cur(next_move, 1, Board, crush, false);
-            print_board(Board);
-            endstate_val = at_endstate(Board, debug, false,0);
-            if(endstate_val > 0.0) {
+            // Perform picked move
+            perform_move(next_move, 1, Board, crush);
+
+            // Check if endstate is reached
+            int endstate_val = at_endstate(Board, false, 0);
+            if(endstate_val > 0.0) { // Check for win
                 cerr<<"You are the winner"<<endl;
                 if(endstate_val == 10.0)
                     cerr<<"Scorewin "<<get_score(Board, true) + board_size*board_size<<endl;
@@ -1669,7 +1426,7 @@ int main(int argc, char** argv) {
                     cerr<<"Scorewin "<<get_score(Board, true)<<endl;
                 cerr<<"Scorelose "<<get_score(Board, false)<<endl;
             }
-            else if(endstate_val < 0.0) {
+            else if(endstate_val < 0.0) { // Check for loss
                 cerr<<"You are the loser"<<endl;
                 if(endstate_val == -10.0)
                     cerr<<"Scorewin "<<get_score(Board, false) + board_size*board_size<<endl;
@@ -1678,21 +1435,26 @@ int main(int argc, char** argv) {
                 cerr<<"Scorelose "<<get_score(Board, true)<<endl;
             }
             current_player = -1;
-            cerr<<"the heuristic value is = "<<get_heuristic(Board, true)<<","<<val<<endl;
-            last_heur_val = get_heuristic(Board, false);
+            cerr<<"the heuristic value is = "<<get_heuristic(Board)<<","<<val<<endl;
+            last_heur_val = get_heuristic(Board);
             cout<<next_move<<endl;
+
+            // End player 1 time and update time remaining
             end_time = clock();
             double time_of_move = 0.0;
             time_of_move = float( end_time - begin_time ) /  CLOCKS_PER_SEC;
-            time_player += time_of_move;
-            print_data(time_of_move);  
-            cin>>move;
-            begin_time = clock();
-            counter++;
-            string_to_move_cur(move, 2, Board, crush, false);
-            print_board(Board);
-            endstate_val = at_endstate(Board,debug,false,1);
-            if(endstate_val > 0.0){
+            time_player += time_of_move;  
+            
+            cin>>move; // Get other player's move
+
+            begin_time = clock(); // Start player 1 time
+
+            // Perfom other player's move
+            perform_move(move, 2, Board, crush);
+
+            // Check if endstate is reached
+            endstate_val = at_endstate(Board, false, 1);
+            if(endstate_val > 0.0){ // Check for win
                 cerr<<"You are the winner"<<endl;
                 if(endstate_val == 10.0)
                     cerr<<"Scorewin "<<get_score(Board, true) + board_size*board_size<<endl;
@@ -1700,7 +1462,7 @@ int main(int argc, char** argv) {
                     cerr<<"Scorewin "<<get_score(Board, true)<<endl;
                 cerr<<"Scorelose "<<get_score(Board, false)<<endl;
             }
-            else if(endstate_val < 0.0){
+            else if(endstate_val < 0.0){ // Check for loss
                 cerr<<"You are the loser"<<endl;
                 if(endstate_val == -10.0)
                     cerr<<"Scorewin "<<get_score(Board, false) + board_size*board_size<<endl;
@@ -1708,8 +1470,8 @@ int main(int argc, char** argv) {
                     cerr<<"Scorewin "<<get_score(Board, false)<<endl;
                 cerr<<"Scorelose "<<get_score(Board, true)<<endl;
             }
-            current_player = 0;
-            // cerr<<"the heuristic value is = "<<get_heuristic(Board, true)<<","<<val<<endl;       
+            current_player = 0;  
+            count++; // Update move count   
         }
     }
     return 0;
