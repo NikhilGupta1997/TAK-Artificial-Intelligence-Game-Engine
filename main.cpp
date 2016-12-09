@@ -210,7 +210,7 @@ void perform_move(string move, int id, state myBoard[8][8], int &crushed) {
                 new_stack.push(top);             
             }
             // Set new captured state of square
-            myBoard[w1][w2].captured = top;
+            myBoard[w1][w2].captured = new_stack.top();
             swap(new_stack, myBoard[w1][w2].state_stack); // Update square stack  
         } 
     }
@@ -1257,7 +1257,7 @@ int main(int argc, char** argv) {
             randmove = rand()%temp_size;
         
         // Perform picked move
-        perform_move(all_moves[randmove], 1, Board, crush, false);
+        perform_move(all_moves[randmove], 1, Board, crush);
         cout<<all_moves[randmove]<<endl;
         
         // End player 2 time and update time remaining
