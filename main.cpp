@@ -114,7 +114,7 @@ class Player {
 } cur_player, other_player; // Total two players (current player and opponent)
 
 // This perform the input move and updates the Board state
-void perform_move(string move, int id, state myBoard[8][8], int &crushed) {
+void perform_move(string move, int id, state myBoard[8][8], int &crushed, int debug) {
     // Get coordinates of square on which move is performed
     int j = (int)(move[1]) - 96; 
     int i = (int)(move[2]) - 48;
@@ -132,10 +132,15 @@ void perform_move(string move, int id, state myBoard[8][8], int &crushed) {
             x = 2;
         if(id != player_id) 
             x = x+3;
-        
+
         // Update board state
         myBoard[i-1][j-1].captured = x;
         myBoard[i-1][j-1].state_stack.push(x);
+
+        if(debug) {
+            cerr<<"The move is "<<move<<" x = "<<x<<endl;
+            cerr<<"captured val = "<<myBoard[i-1][j-1].captured<<" top = "<<myBoard[i-1][j-1].state_stack.top()<<endl;
+        }
         
         // Update piece count
         if(move[0] == 'F' || move[0] == 'S') {
@@ -241,7 +246,7 @@ void undo_move(string move, int id,state gen_Board[8][8], int crushed) {
                 other_player.capstone++;
         }
     }  
-    // If its not a 'place' move  
+    // If its not a 'place' move    
     else {   
         int no_picked = (int)move[0] - 48; // No of pieces picked
         int drops = move.length()-4; // The number of drops in the move
@@ -272,23 +277,24 @@ void undo_move(string move, int id,state gen_Board[8][8], int crushed) {
         for(int k = drops; k > 0; k--) {
             w1 = i-1 + (k * mi);
             w2 = j-1 + (k * mj);
-            int pick_up = dropped[k-1]; // No. of pieces being picked up     
+            int pick_up = dropped[k-1]; // No. of pieces being picked up                   
             int captured = gen_Board[w1][w2].captured; // Maintains the current capturing piece
             // If there was a possiblity that a wall was crushed
             if(k == drops && gen_Board[w1][w2].state_stack.size() >= 2 && pick_up == 1 && captured % 3 == 2) {
                 reverse_drop.push(captured);
                 gen_Board[w1][w2].state_stack.pop();
                 captured = gen_Board[w1][w2].state_stack.top();
-                
+                  
                 // Check to see if a wall was crushed during the move
                 if(captured % 3 == 0 && crushed == 1) {
                     int new_wall = captured;
                     gen_Board[w1][w2].state_stack.pop();
-                    gen_Board[w1][w2].state_stack.push(new_wall+1); // Upgrade flatstone to wall
+                    new_wall++; // Upgrade flatstone to wall
+                    gen_Board[w1][w2].state_stack.push(new_wall); 
                     gen_Board[w1][w2].captured = new_wall;
                 }
                 else 
-                    gen_Board[w1][w2].captured = captured;   
+                    gen_Board[w1][w2].captured = captured;  
             }
             else {   
                 for(int x1 = 1; x1 <= pick_up; x1++) { // Pick up pieces 
@@ -302,14 +308,13 @@ void undo_move(string move, int id,state gen_Board[8][8], int crushed) {
                     gen_Board[w1][w2].captured = gen_Board[w1][w2].state_stack.top();
             }
         }
-
         // Add the picked up pieces to the original stack where they were picked from
         while(reverse_drop.size() != 0) {
             int picking = reverse_drop.top();
             reverse_drop.pop();
             gen_Board[i-1][j-1].state_stack.push(picking);
         }
-        gen_Board[i-1][j-1].captured = gen_Board[i-1][j-1].state_stack.top();      
+        gen_Board[i-1][j-1].captured = gen_Board[i-1][j-1].state_stack.top();       
     }
 }
 
@@ -1042,7 +1047,7 @@ double best_move(state myboard[8][8], double alpha, double beta, int depth, stri
     vector<pair<double,string> > values; // To store evaluated state values for sorting
     for(int i = 0; i < size; i++) {
         int crushed = 0; // variable which checks if wall was crushed by capstone
-        perform_move(all_moves[i], move_player, myboard, crushed); // Move to child state
+        perform_move(all_moves[i], move_player, myboard, crushed, 0); // Move to child state
 
         if(!minimum)   
             ans = at_endstate(myboard, false, 0); // as it was my move
@@ -1112,7 +1117,7 @@ double best_move(state myboard[8][8], double alpha, double beta, int depth, stri
             maxi_heap.pop();
 
             int crushed = 0;
-            perform_move(move_taken, move_player, myboard, crushed);
+            perform_move(move_taken, move_player, myboard, crushed, 0);
 
             string tmp = "";
             // If Roadwin check check to see better score by checking 'current_score'
@@ -1160,7 +1165,7 @@ double best_move(state myboard[8][8], double alpha, double beta, int depth, stri
             mini_heap.pop();
 
             int crushed = 0;
-            perform_move(move_taken, move_player, myboard, crushed);
+            perform_move(move_taken, move_player, myboard, crushed, 0);
 
             string tmp = "";
             // If Roadwin check check to see better score by checking 'current_score'
@@ -1216,6 +1221,25 @@ int get_score(state Board[8][8], bool winner) {
         return count2;
 }
 
+void print_board(state Board[8][8]) {
+    for(int i = 0; i < board_size; i++) {
+        for(int j = 0; j < board_size; j++) {
+            stack<int> temp(Board[i][j].state_stack);
+            if(temp.size() == 0) {
+                cerr<<"-1       ";
+                continue;
+            }  
+            while(temp.size()!=0) {
+                int x = temp.top();
+                temp.pop();
+                cerr<<x<<":";
+            }
+            cerr<<"       ";
+        }
+        cerr<<endl;
+    }
+}
+
 int main(int argc, char** argv) {
     // Start random seed for random functions
     srand(time(NULL));
@@ -1245,7 +1269,7 @@ int main(int argc, char** argv) {
         
         // Perfom other player's move
         int crush = 0;
-        perform_move(move, 2, Board, crush);
+        perform_move(move, 2, Board, crush, 1);
         
         // Generate possible moves
         int temp_size;
@@ -1257,7 +1281,7 @@ int main(int argc, char** argv) {
             randmove = rand()%temp_size;
         
         // Perform picked move
-        perform_move(all_moves[randmove], 1, Board, crush);
+        perform_move(all_moves[randmove], 1, Board, crush, 1);
         cout<<all_moves[randmove]<<endl;
         
         // End player 2 time and update time remaining
@@ -1272,7 +1296,7 @@ int main(int argc, char** argv) {
 
             // Perfom other player's move
             crush = 0;
-            perform_move(move, 1, Board, crush);
+            perform_move(move, 1, Board, crush, 1);
 
             // Check if endstate is reached
             int endstate_val = at_endstate(Board, false, 1);
@@ -1322,7 +1346,8 @@ int main(int argc, char** argv) {
                     break;
             }
             // Perform picked move
-            perform_move(next_move, 2, Board, crush);
+            perform_move(next_move, 2, Board, crush, 1);
+            print_board(Board);
 
             // Check if endstate is reached
             endstate_val = at_endstate(Board, false, 0);
@@ -1367,7 +1392,7 @@ int main(int argc, char** argv) {
         
         // Perform picked move
         int crush = 0;
-        perform_move(all_moves[randmove], 2, Board, crush);
+        perform_move(all_moves[randmove], 2, Board, crush, 1);
         cout<<all_moves[randmove]<<endl;
         
         // End player 2 time and update time remaining
@@ -1382,7 +1407,7 @@ int main(int argc, char** argv) {
 
         // Perfom other player's move
         crush = 0;
-        perform_move(move, 1, Board, crush);
+        perform_move(move, 1, Board, crush, 1);
 
         int count = 0; // Start move count
         while(true) {
@@ -1414,7 +1439,8 @@ int main(int argc, char** argv) {
                     break;
             }
             // Perform picked move
-            perform_move(next_move, 1, Board, crush);
+            perform_move(next_move, 1, Board, crush, 1);
+            print_board(Board);
 
             // Check if endstate is reached
             int endstate_val = at_endstate(Board, false, 0);
@@ -1450,7 +1476,7 @@ int main(int argc, char** argv) {
             begin_time = clock(); // Start player 1 time
 
             // Perfom other player's move
-            perform_move(move, 2, Board, crush);
+            perform_move(move, 2, Board, crush, 1);
 
             // Check if endstate is reached
             endstate_val = at_endstate(Board, false, 1);
